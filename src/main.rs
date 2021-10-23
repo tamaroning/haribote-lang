@@ -1,5 +1,6 @@
 extern crate libc;
 use std::fs::File;
+use std::io;
 use std::io::prelude::*;
 use std::env;
 use std::str;
@@ -11,7 +12,7 @@ mod ffi {
     }
 }
 
-#[derive(Debug, Hash, PartialEq, Eq)]
+#[derive(Debug)]
 struct Token<'a> {
     string: &'a str,
 }
@@ -57,7 +58,7 @@ fn is_normal_symbol(c: char) -> bool {
 
 #[derive(Debug)]
 struct Lexer<'a> {
-    txt: &'a str,
+    txt: &'a String,
     pos: usize,
     tokens: Vec<Token<'a>>,
 }
@@ -107,64 +108,50 @@ impl<'a> Lexer<'a> {
     }
 }
 
-
-struct VariableMap<'a> {
-    map: HashMap<&'a Token<'a>, i32>,
+struct VariableMap {
+    map: HashMap<String, i32>,
 }
 
-impl<'a> VariableMap<'a> {
+impl VariableMap {
     fn new() -> Self {
-        let mut map = HashMap::new();
         VariableMap {
-            map: map,
+            map: HashMap::new(),
         }
     }
 
-    fn get(&mut self, tok: &'a Token) -> i32 {
-        if self.map.contains_key(tok) {
-            return *self.map.get(tok).unwrap();
+    fn get(&mut self, tok: &Token) -> i32 {
+        if self.map.contains_key(tok.string) {
+            return *self.map.get(tok.string).unwrap();
         } else {
             let opt = tok.string.parse::<i32>();
             match opt {
                 // numerical literals
                 Ok(n) => {
-                    self.map.insert(tok, n);
+                    self.map.insert(tok.string.to_string(), n);
                     n
                 },
                 // undeclared valriables
                 Err(_) => {
-                    self.map.insert(tok, 0);
+                    self.map.insert(tok.string.to_string(), 0);
                     0
                 }
             }
         }
     }
 
-    fn set(&mut self, tok: &'a Token, val: i32) {
-        self.map.insert(tok, val);
+    fn set(&mut self, tok: &Token, val: i32) {
+        self.map.insert(tok.string.to_string(), val);
     }
 }
 
-fn main() {
-    let args: Vec<String> = env::args().collect();
-
-    if args.len() < 2 {
-        println!("haribote-lang");
-        println!("Usage: haribote-lang <file path>");
-        std::process::exit(0);
-    }
-
-    let filepath = &args[1];
-    let src = load_text(filepath);
-    let mut lexer = Lexer::new(&src);
+fn run<'a>(s: &String, var: &mut VariableMap) {
+    let mut lexer = Lexer::new(s);
     lexer.lex();
 
     let mut tokens = lexer.tokens;
     tokens.push(Token::new("."));
     tokens.push(Token::new("."));
     tokens.push(Token::new("."));
-
-    let mut var = VariableMap::new();
 
     // register labels
     let mut pc = 0;
@@ -242,5 +229,39 @@ fn main() {
             pc += 1;
         }
         pc += 1;
+    }
+}
+
+fn main() {
+    let args: Vec<String> = env::args().collect();
+
+    if args.len() > 3 {
+        println!("haribote-lang");
+        println!("Usage: haribote-lang <file path>");
+        std::process::exit(0);
+    }
+
+    let mut var = VariableMap::new();
+
+    if args.len() == 2 {
+        let filepath = &args[1];
+        let src = load_text(filepath);
+        run(&src, &mut var);
+    }
+
+    // REPL
+    if args.len() == 1 {
+        loop {
+            let mut input = String::new();
+            print!("> ");
+            io::stdout().flush().unwrap();
+            io::stdin().read_line(&mut input).expect("input error");
+            input = input.replace("\r", "");
+            input = input.replace("\n", "");
+            if input.as_str() == "exit" {
+                std::process::exit(0);
+            }
+            run(&input, &mut var);
+        }
     }
 }
