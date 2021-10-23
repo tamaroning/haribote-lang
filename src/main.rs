@@ -1,9 +1,15 @@
-use std::env::set_var;
+extern crate libc;
 use std::fs::File;
 use std::io::prelude::*;
 use std::env;
 use std::str;
 use std::collections::HashMap;
+
+mod ffi {
+    extern {
+        pub fn clock() -> ::libc::clock_t;
+    }
+}
 
 #[derive(Debug, Hash, PartialEq, Eq)]
 struct Token<'a> {
@@ -160,22 +166,75 @@ fn main() {
 
     let mut var = VariableMap::new();
 
+    // register labels
     let mut pc = 0;
     while pc < tokens.len() - 3 {
+        if tokens[pc + 1].matches(":") {
+            var.set(&tokens[pc], pc as i32 + 2);
+        }
+        pc += 1;
+    }
+
+    pc = 0;
+    while pc < tokens.len() - 3 {
+        // assignment
         if tokens[pc + 1].matches("=") && tokens[pc + 3].matches(";") {
             let val = var.get(&tokens[pc + 2]);
             var.set(&tokens[pc], val);
-        } else if tokens[pc + 1].matches("=") && tokens[pc + 3].matches("+") && tokens[pc + 5].matches(";") {
+        }
+        // add
+        else if tokens[pc + 1].matches("=") && tokens[pc + 3].matches("+") && tokens[pc + 5].matches(";") {
             let lhs = var.get(&tokens[pc + 2]);
             let rhs = var.get(&tokens[pc + 4]);
             var.set(&tokens[pc], lhs + rhs);
-        } else if tokens[pc + 1].matches("=") && tokens[pc + 3].matches("-") && tokens[pc + 5].matches(";") {
+        }
+        // subtract
+        else if tokens[pc + 1].matches("=") && tokens[pc + 3].matches("-") && tokens[pc + 5].matches(";") {
             let lhs = var.get(&tokens[pc + 2]);
             let rhs = var.get(&tokens[pc + 4]);
             var.set(&tokens[pc], lhs - rhs);
-        } else if tokens[pc].matches("print") && tokens[pc + 2].matches(";") {
+        }
+        // print
+        else if tokens[pc].matches("print") && tokens[pc + 2].matches(";") {
             println!("{}", var.get(&tokens[pc + 1]));
-        } else {
+        }
+        // label
+        else if tokens[pc + 1].matches(":") {
+            pc += 2;
+            continue;
+        }
+        // goto
+        else if tokens[pc].matches("goto") && tokens[pc + 2].matches(";") {
+            pc = var.get(&tokens[pc + 1]) as usize;
+            continue;
+        }
+        // if (v0 op v1) goto label;
+        else if tokens[pc].matches("if") && tokens[pc + 1].matches("(") && tokens[pc + 5].matches(")")
+        && tokens[pc + 6].matches("goto") && tokens[pc + 8].matches(";") {
+            let gpc = var.get(&tokens[pc + 7]) as usize;
+            let v0 = var.get(&tokens[pc + 2]);
+            let v1 = var.get(&tokens[pc + 4]);
+            if tokens[pc + 3].matches("==") && v0 == v1 {
+                pc = gpc;
+                continue;
+            }
+            if tokens[pc + 3].matches("!=") && v0 != v1 {
+                pc = gpc;
+                continue;
+            }
+            if tokens[pc + 3].matches("<") && v0 < v1 {
+                pc = gpc;
+                continue;
+            }
+        }
+        // time
+        else if tokens[pc].matches("time") && tokens[pc + 1].matches(";") {
+            unsafe {
+                println!("{}", ffi::clock());
+            }
+        }
+        // syntax error
+        else {
             panic!("Syntax error: {} {} {}", tokens[pc].string, tokens[pc + 1].string, tokens[pc + 2].string);
         }
         while !tokens[pc].matches(";") {

@@ -1,4 +1,5 @@
-a=3;
-b=a+1;
-b=b-2;
-print 2;
+i = 0;
+label:
+i = i + 1;
+if (i < 100000) goto label;
+time;
