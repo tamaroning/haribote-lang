@@ -89,12 +89,14 @@ impl<'a> Lexer<'a> {
             }
             if is_one_char_symbol(self.next_char()) {
                 self.pos += 1;
-            } else if self.next_char().is_alphanumeric() && self.pos < self.txt.len() {
-                while self.next_char().is_alphanumeric() {
+            } else if self.next_char().is_alphanumeric() {
+                self.pos += 1;
+                while self.pos < self.txt.len() && self.next_char().is_alphanumeric() {
                     self.pos += 1;
                 }
             } else if is_normal_symbol(self.next_char()) {
-                while is_normal_symbol(self.next_char()) && self.pos < self.txt.len() {
+                self.pos += 1;
+                while self.pos < self.txt.len() && is_normal_symbol(self.next_char()) {
                     self.pos += 1;
                 }
             } else {
@@ -102,9 +104,34 @@ impl<'a> Lexer<'a> {
                 std::process::exit(0);
             }
             let s: &'a str = &self.txt[start_pos .. self.pos];
-            //println!("{:?}", s);
+            //println!("{:?}", Token::new(s));
             self.tokens.push(Token::new(s));
         }
+    }
+}
+
+struct Parser<'a> {
+    tokens: Vec<Token<'a>>,
+    pos: usize,
+}
+
+impl<'a> Parser<'a> {
+    fn new(token_vec: Vec<Token<'a>>) -> Self {
+        Parser {
+            tokens: token_vec,
+            pos: 0,
+        }
+    }
+
+    fn phrase_compare(&self, phr: Vec<&str>) -> bool {
+        for i in 0..phr.len() {
+            if phr[i] == "*" {
+                continue;
+            } else if !self.tokens[self.pos + i].matches(phr[i]) {
+                return false;
+            }
+        }
+        return true;
     }
 }
 
@@ -145,90 +172,95 @@ impl VariableMap {
 }
 
 fn run<'a>(s: &String, var: &mut VariableMap) {
+    let t0 = unsafe {
+        ffi::clock()
+    };
     let mut lexer = Lexer::new(s);
     lexer.lex();
 
     let mut tokens = lexer.tokens;
+    tokens.push(Token::new(";"));
     tokens.push(Token::new("."));
     tokens.push(Token::new("."));
     tokens.push(Token::new("."));
 
     // register labels
-    let mut pc = 0;
-    while pc < tokens.len() - 3 {
+    for pc in 0..tokens.len() - 3 {
         if tokens[pc + 1].matches(":") {
             var.set(&tokens[pc], pc as i32 + 2);
         }
-        pc += 1;
     }
 
-    pc = 0;
-    while pc < tokens.len() - 3 {
+    let mut parser = Parser::new(tokens);
+
+    while parser.pos < parser.tokens.len() - 3 {
         // assignment
-        if tokens[pc + 1].matches("=") && tokens[pc + 3].matches(";") {
-            let val = var.get(&tokens[pc + 2]);
-            var.set(&tokens[pc], val);
+        if parser.phrase_compare(vec!["*", "=", "*", ";"]) {
+            let val = var.get(&parser.tokens[parser.pos + 2]);
+            var.set(&parser.tokens[parser.pos], val);
         }
         // add
-        else if tokens[pc + 1].matches("=") && tokens[pc + 3].matches("+") && tokens[pc + 5].matches(";") {
-            let lhs = var.get(&tokens[pc + 2]);
-            let rhs = var.get(&tokens[pc + 4]);
-            var.set(&tokens[pc], lhs + rhs);
+        else if parser.phrase_compare(vec!["*", "=", "*", "+", "*", ";"]) {
+            let lhs = var.get(&parser.tokens[parser.pos + 2]);
+            let rhs = var.get(&parser.tokens[parser.pos + 4]);
+            var.set(&parser.tokens[parser.pos], lhs + rhs);
         }
         // subtract
-        else if tokens[pc + 1].matches("=") && tokens[pc + 3].matches("-") && tokens[pc + 5].matches(";") {
-            let lhs = var.get(&tokens[pc + 2]);
-            let rhs = var.get(&tokens[pc + 4]);
-            var.set(&tokens[pc], lhs - rhs);
+        else if parser.phrase_compare(vec!["*", "=", "*", "-", "*", ";"]) {
+            let lhs = var.get(&parser.tokens[parser.pos + 2]);
+            let rhs = var.get(&parser.tokens[parser.pos + 4]);
+            var.set(&parser.tokens[parser.pos], lhs - rhs);
         }
         // print
-        else if tokens[pc].matches("print") && tokens[pc + 2].matches(";") {
-            println!("{}", var.get(&tokens[pc + 1]));
+        else if parser.phrase_compare(vec!["print", "*", ";"]) {
+            println!("{}", var.get(&parser.tokens[parser.pos + 1]));
         }
         // label
-        else if tokens[pc + 1].matches(":") {
-            pc += 2;
+        else if parser.phrase_compare(vec!["*", ":"]) {
+            parser.pos += 2;
             continue;
         }
         // goto
-        else if tokens[pc].matches("goto") && tokens[pc + 2].matches(";") {
-            pc = var.get(&tokens[pc + 1]) as usize;
+        else if parser.phrase_compare(vec!["goto", "*", ";"]) {
+            parser.pos = var.get(&parser.tokens[parser.pos + 1]) as usize;
             continue;
         }
         // if (v0 op v1) goto label;
-        else if tokens[pc].matches("if") && tokens[pc + 1].matches("(") && tokens[pc + 5].matches(")")
-        && tokens[pc + 6].matches("goto") && tokens[pc + 8].matches(";") {
-            let gpc = var.get(&tokens[pc + 7]) as usize;
-            let v0 = var.get(&tokens[pc + 2]);
-            let v1 = var.get(&tokens[pc + 4]);
-            if tokens[pc + 3].matches("==") && v0 == v1 {
-                pc = gpc;
+        else if parser.phrase_compare(vec!["if", "(", "*", "*", "*", ")","goto", "*", ";"]) {
+            let gpc = var.get(&parser.tokens[parser.pos + 7]) as usize;
+            let v0 = var.get(&parser.tokens[parser.pos + 2]);
+            let v1 = var.get(&parser.tokens[parser.pos + 4]);
+            if parser.tokens[parser.pos + 3].matches("==") && v0 == v1 {
+                parser.pos = gpc;
                 continue;
             }
-            if tokens[pc + 3].matches("!=") && v0 != v1 {
-                pc = gpc;
+            if parser.tokens[parser.pos + 3].matches("!=") && v0 != v1 {
+                parser.pos = gpc;
                 continue;
             }
-            if tokens[pc + 3].matches("<") && v0 < v1 {
-                pc = gpc;
+            if parser.tokens[parser.pos + 3].matches("<") && v0 < v1 {
+                parser.pos = gpc;
                 continue;
             }
         }
         // time
-        else if tokens[pc].matches("time") && tokens[pc + 1].matches(";") {
+        else if parser.phrase_compare(vec!["time", ";"]) {
             unsafe {
-                println!("{}", ffi::clock());
+                println!("time: {}", ffi::clock() - t0);
             }
+        } else if parser.tokens[parser.pos].matches(";") {
+            // do nothing
         }
         // syntax error
         else {
-            panic!("Syntax error: {} {} {}", tokens[pc].string, tokens[pc + 1].string, tokens[pc + 2].string);
+            panic!("Syntax error: {} {} {}", parser.tokens[parser.pos].string, parser.tokens[parser.pos + 1].string, parser.tokens[parser.pos + 2].string);
         }
-        while !tokens[pc].matches(";") {
-            //println!("{:?}", tokens[pc]);
-            pc += 1;
+        while !parser.tokens[parser.pos].matches(";") {
+            //println!("{:?}", parser.tokens[parser.pos]);
+            parser.pos += 1;
         }
-        pc += 1;
+        //println!("{:?}", parser.tokens[parser.pos]);
+        parser.pos += 1;
     }
 }
 
@@ -251,6 +283,7 @@ fn main() {
 
     // REPL
     if args.len() == 1 {
+        println!("haribote-lang interactive mode");
         loop {
             let mut input = String::new();
             print!("> ");
@@ -258,10 +291,19 @@ fn main() {
             io::stdin().read_line(&mut input).expect("input error");
             input = input.replace("\r", "");
             input = input.replace("\n", "");
+            // exit
             if input.as_str() == "exit" {
                 std::process::exit(0);
             }
-            run(&input, &mut var);
+            // run the file
+            else if input.starts_with("run") {
+                let filepath = &input[4..];
+                let src = load_text(filepath);
+                run(&src, &mut var);
+            }
+            else {
+                run(&input, &mut var);
+            }
         }
     }
 }

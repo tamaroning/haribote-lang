@@ -1,5 +1,0 @@
-i = 0;
-label:
-i = i + 1;
-if (i < 100000) goto label;
-time;
