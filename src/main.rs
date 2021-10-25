@@ -12,7 +12,7 @@ mod ffi {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 struct Token<'a> {
     string: &'a str,
 }
@@ -117,7 +117,7 @@ impl Lexer {
 struct Parser<'a> {
     tokens: Vec<Token<'a>>,
     pos: usize,
-    internal_code: [Option<&'a Token<'a>>; 8],
+    internal_code: [Option<Token<'a>>; 8],
 }
 
 impl<'a> Parser<'a> {
@@ -129,11 +129,11 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn phrase_compare(&self, phr: Vec<&str>) -> bool {
-        for i in 0..phr.len() {
+    fn phrase_compare<const N: usize>(&mut self, phr: [&'static str; N]) -> bool {
+        for i in 0..N {
             if phr[i].starts_with("*") {
                 let n = phr[i][1..].parse::<usize>().unwrap();
-                //INTERNAL_CODE[n] = Some(&self.tokens[self.pos + i]);
+                self.internal_code[n] = Some(self.tokens[self.pos + i].clone());
                 continue;
             } else if !self.tokens[self.pos + i].matches(phr[i]) {
                 return false;
@@ -200,38 +200,38 @@ fn run(s: String, var: &mut VariableMap) {
 
     while parser.pos < parser.tokens.len() - 3 {
         // assignment
-        if parser.phrase_compare(vec!["*0", "=", "*1", ";"]) {
+        if parser.phrase_compare(["*0", "=", "*1", ";"]) {
             let val = var.get(&parser.tokens[parser.pos + 2]);
             var.set(&parser.tokens[parser.pos], val);
         }
         // add
-        else if parser.phrase_compare(vec!["*0", "=", "*1", "+", "*2", ";"]) {
+        else if parser.phrase_compare(["*0", "=", "*1", "+", "*2", ";"]) {
             let lhs = var.get(&parser.tokens[parser.pos + 2]);
             let rhs = var.get(&parser.tokens[parser.pos + 4]);
             var.set(&parser.tokens[parser.pos], lhs + rhs);
         }
         // subtract
-        else if parser.phrase_compare(vec!["*0", "=", "*1", "-", "*2", ";"]) {
+        else if parser.phrase_compare(["*0", "=", "*1", "-", "*2", ";"]) {
             let lhs = var.get(&parser.tokens[parser.pos + 2]);
             let rhs = var.get(&parser.tokens[parser.pos + 4]);
             var.set(&parser.tokens[parser.pos], lhs - rhs);
         }
         // print
-        else if parser.phrase_compare(vec!["print", "*0", ";"]) {
+        else if parser.phrase_compare(["print", "*0", ";"]) {
             println!("{}", var.get(&parser.tokens[parser.pos + 1]));
         }
         // label
-        else if parser.phrase_compare(vec!["*0", ":"]) {
+        else if parser.phrase_compare(["*0", ":"]) {
             parser.pos += 2;
             continue;
         }
         // goto
-        else if parser.phrase_compare(vec!["goto", "*0", ";"]) {
+        else if parser.phrase_compare(["goto", "*0", ";"]) {
             parser.pos = var.get(&parser.tokens[parser.pos + 1]) as usize;
             continue;
         }
         // if (v0 op v1) goto label;
-        else if parser.phrase_compare(vec!["if", "(", "*0", "*1", "*2", ")","goto", "*3", ";"]) {
+        else if parser.phrase_compare(["if", "(", "*0", "*1", "*2", ")","goto", "*3", ";"]) {
             let gpc = var.get(&parser.tokens[parser.pos + 7]) as usize;
             let v0 = var.get(&parser.tokens[parser.pos + 2]);
             let v1 = var.get(&parser.tokens[parser.pos + 4]);
@@ -249,7 +249,7 @@ fn run(s: String, var: &mut VariableMap) {
             }
         }
         // time
-        else if parser.phrase_compare(vec!["time", ";"]) {
+        else if parser.phrase_compare(["time", ";"]) {
             unsafe {
                 println!("time: {}", ffi::clock() - t0);
             }
