@@ -1,13 +1,13 @@
 extern crate libc;
+use std::collections::HashMap;
+use std::env;
 use std::fs::File;
 use std::io;
 use std::io::prelude::*;
-use std::env;
 use std::str;
-use std::collections::HashMap;
 
 mod ffi {
-    extern {
+    extern "C" {
         pub fn clock() -> ::libc::clock_t;
     }
 }
@@ -30,7 +30,8 @@ impl Token {
 fn load_text(path: &str) -> String {
     let mut file = File::open(path.clone()).expect("File not found");
     let mut txt = String::new();
-    file.read_to_string(&mut txt).expect("Couldn't open the file");
+    file.read_to_string(&mut txt)
+        .expect("Couldn't open the file");
     txt
 }
 
@@ -50,8 +51,8 @@ fn is_one_char_symbol(c: char) -> bool {
 
 fn is_normal_symbol(c: char) -> bool {
     match c {
-        '=' | '+' | '-' | '*' | '/' | '!' | '%' | '&' 
-        | '~' | '|' | '<' | '>' | '?' | ':' | '.' | '#' => true,
+        '=' | '+' | '-' | '*' | '/' | '!' | '%' | '&' | '~' | '|' | '<' | '>' | '?' | ':' | '.'
+        | '#' => true,
         _ => false,
     }
 }
@@ -71,7 +72,7 @@ impl Lexer {
             tokens: Vec::new(),
         }
     }
- 
+
     fn next_char(&self) -> char {
         self.txt[self.pos..].chars().next().unwrap()
     }
@@ -145,7 +146,7 @@ impl VariableMap {
                 Ok(n) => {
                     self.map.insert(tok.string.to_string(), n);
                     n
-                },
+                }
                 // undeclared valriables
                 Err(_) => {
                     self.map.insert(tok.string.to_string(), 0);
@@ -239,18 +240,16 @@ impl Compiler {
                 self.push_internal_code(Operation::Goto(param0));
             }
             // if (v0 op v1) goto label;
-            else if self.phrase_compare(["if", "(", "*0", "*1", "*2", ")","goto", "*3", ";"]) {
+            else if self.phrase_compare(["if", "(", "*0", "*1", "*2", ")", "goto", "*3", ";"]) {
                 let label = self.cur_inst_param[3].take().unwrap();
                 let lhs = self.cur_inst_param[0].take().unwrap();
                 let rhs = self.cur_inst_param[2].take().unwrap();
                 let bin_op = &self.cur_inst_param[1].take().unwrap();
                 if &bin_op.string == "==" {
                     self.push_internal_code(Operation::Jeq(lhs, rhs, label));
-                }
-                else if &bin_op.string == "!=" {
+                } else if &bin_op.string == "!=" {
                     self.push_internal_code(Operation::Jne(lhs, rhs, label));
-                }
-                else if &bin_op.string == "<" {
+                } else if &bin_op.string == "<" {
                     self.push_internal_code(Operation::Jlt(lhs, rhs, label));
                 }
             }
@@ -263,7 +262,12 @@ impl Compiler {
             }
             // syntax error
             else {
-                panic!("Syntax error: {} {} {}", self.lexer.tokens[self.pos].string, self.lexer.tokens[self.pos + 1].string, self.lexer.tokens[self.pos + 2].string);
+                panic!(
+                    "Syntax error: {} {} {}",
+                    self.lexer.tokens[self.pos].string,
+                    self.lexer.tokens[self.pos + 1].string,
+                    self.lexer.tokens[self.pos + 2].string
+                );
             }
 
             // read forward until bumping into ";"
@@ -275,9 +279,7 @@ impl Compiler {
     }
 
     fn exec(&self, var_map: &mut VariableMap) {
-        let t0 = unsafe {
-            ffi::clock()
-        };
+        let t0 = unsafe { ffi::clock() };
 
         //println!("IC: {:?}", self.internal_code);
         let mut pc = 0;
@@ -287,25 +289,25 @@ impl Compiler {
                 Operation::Copy(ref dist, ref var) => {
                     let val = var_map.get(var);
                     var_map.set(dist, val);
-                },
+                }
                 Operation::Add(ref dist, ref lhs, ref rhs) => {
                     let lhs_val = var_map.get(lhs);
                     let rhs_val = var_map.get(rhs);
                     var_map.set(dist, lhs_val + rhs_val);
-                },
+                }
                 Operation::Sub(ref dist, ref lhs, ref rhs) => {
                     let lhs_val = var_map.get(lhs);
                     let rhs_val = var_map.get(rhs);
                     var_map.set(dist, lhs_val + rhs_val);
-                },
+                }
                 Operation::Print(ref var) => {
                     let val = var_map.get(var);
                     println!("{}", val);
-                },
+                }
                 Operation::Goto(ref label) => {
                     pc = var_map.get(label) as usize;
                     continue;
-                },
+                }
                 Operation::Jeq(ref lhs, ref rhs, ref label) => {
                     let lhs_val = var_map.get(lhs);
                     let rhs_val = var_map.get(rhs);
@@ -313,7 +315,7 @@ impl Compiler {
                         pc = var_map.get(label) as usize;
                         continue;
                     }
-                },
+                }
                 Operation::Jne(ref lhs, ref rhs, ref label) => {
                     let lhs_val = var_map.get(lhs);
                     let rhs_val = var_map.get(rhs);
@@ -321,7 +323,7 @@ impl Compiler {
                         pc = var_map.get(label) as usize;
                         continue;
                     }
-                },
+                }
                 Operation::Jlt(ref lhs, ref rhs, ref label) => {
                     let lhs_val = var_map.get(lhs);
                     let rhs_val = var_map.get(rhs);
@@ -329,11 +331,9 @@ impl Compiler {
                         pc = var_map.get(label) as usize;
                         continue;
                     }
-                },
-                Operation::Time => {
-                    unsafe {
-                        println!("time: {}", ffi::clock() - t0);
-                    }
+                }
+                Operation::Time => unsafe {
+                    println!("time: {}", ffi::clock() - t0);
                 },
                 Operation::Nop => (),
             }
@@ -384,8 +384,7 @@ fn main() {
                 let filepath = &input[4..];
                 let src = load_text(filepath);
                 run(src, &mut var);
-            }
-            else {
+            } else {
                 run(input, &mut var);
             }
         }
