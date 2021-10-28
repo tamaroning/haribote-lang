@@ -12,13 +12,13 @@ mod ffi {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-struct Token<'a> {
-    string: &'a str,
+#[derive(Debug, Clone)]
+struct Token {
+    string: String,
 }
 
-impl<'a> Token<'a> {
-    fn new(s: &'a str) -> Self {
+impl Token {
+    fn new(s: String) -> Self {
         Token { string: s }
     }
 
@@ -60,6 +60,7 @@ fn is_normal_symbol(c: char) -> bool {
 struct Lexer {
     txt: String,
     pos: usize,
+    tokens: Vec<Token>,
 }
 
 impl Lexer {
@@ -67,6 +68,7 @@ impl Lexer {
         Lexer {
             txt: prg,
             pos: 0,
+            tokens: Vec::new(),
         }
     }
  
@@ -74,12 +76,7 @@ impl Lexer {
         self.txt[self.pos..].chars().next().unwrap()
     }
 
-    fn nth_char(&self, n: usize) -> char {
-        self.txt[self.pos..].chars().nth(n).unwrap()
-    }
-
-    fn lex(&mut self) -> Vec<Token> {
-        let mut tokens = Vec::new();
+    fn lex(&mut self) {
         while self.pos < self.txt.len() {
             let start_pos = self.pos;
             if is_whitespace(self.next_char()) {
@@ -102,45 +99,28 @@ impl Lexer {
                 println!("Syntax error : '{}'", self.next_char());
                 std::process::exit(0);
             }
-            let s: &str = &self.txt[start_pos .. self.pos];
+            let s = self.txt[start_pos..self.pos].to_string();
             //println!("{:?}", Token::new(s));
-            tokens.push(Token::new(s));
+            self.tokens.push(Token::new(s));
         }
-        tokens.push(Token::new(";"));
-        tokens.push(Token::new("."));
-        tokens.push(Token::new("."));
-        tokens.push(Token::new("."));
-        tokens
+        self.tokens.push(Token::new(String::from(";")));
+        self.tokens.push(Token::new(String::from(".")));
+        self.tokens.push(Token::new(String::from(".")));
+        self.tokens.push(Token::new(String::from(".")));
     }
 }
 
-struct Parser<'a> {
-    tokens: Vec<Token<'a>>,
-    pos: usize,
-    internal_code: [Option<Token<'a>>; 8],
-}
-
-impl<'a> Parser<'a> {
-    fn new(token_vec: Vec<Token<'a>>) -> Self {
-        Parser {
-            tokens: token_vec,
-            pos: 0,
-            internal_code: [None; 8],
-        }
-    }
-
-    fn phrase_compare<const N: usize>(&mut self, phr: [&'static str; N]) -> bool {
-        for i in 0..N {
-            if phr[i].starts_with("*") {
-                let n = phr[i][1..].parse::<usize>().unwrap();
-                self.internal_code[n] = Some(self.tokens[self.pos + i].clone());
-                continue;
-            } else if !self.tokens[self.pos + i].matches(phr[i]) {
-                return false;
-            }
-        }
-        return true;
-    }
+enum Operation {
+    Copy,
+    Add,
+    Sub,
+    Print,
+    Time,
+    Goto,
+    Jeq,
+    Jne,
+    Jlt,
+    Nop,
 }
 
 struct VariableMap {
@@ -156,8 +136,8 @@ impl VariableMap {
 
     // TODO: to_string() is a bottleneck
     fn get(&mut self, tok: &Token) -> i32 {
-        if self.map.contains_key(tok.string) {
-            return *self.map.get(tok.string).unwrap();
+        if self.map.contains_key(&tok.string) {
+            return *self.map.get(&tok.string).unwrap();
         } else {
             let opt = tok.string.parse::<i32>();
             match opt {
@@ -181,92 +161,153 @@ impl VariableMap {
     }
 }
 
-fn run(s: String, var: &mut VariableMap) {
-    let t0 = unsafe {
-        ffi::clock()
-    };
-    
-    let mut lexer = Lexer::new(s);
-    let tokens = lexer.lex();
+struct InternalCode {
+    op: Operation,
+    param: [Option<Token>; 8],
+}
 
-    // register labels
-    for pc in 0..tokens.len() - 3 {
-        if tokens[pc + 1].matches(":") {
-            var.set(&tokens[pc], pc as i32 + 2);
+impl InternalCode {
+    fn new() -> Self {
+        InternalCode {
+            op: Operation::Nop,
+            param: Default::default(),
+        }
+    }
+}
+
+struct Compiler {
+    pos: usize,
+    lexer: Lexer,
+    internal_code: InternalCode,
+}
+
+impl Compiler {
+    fn new(s: String) -> Self {
+        let mut lexer = Lexer::new(s);
+        lexer.lex();
+        Compiler {
+            pos: 0,
+            lexer: lexer,
+            internal_code: InternalCode::new(),
         }
     }
 
-    let mut parser = Parser::new(tokens);
-
-    while parser.pos < parser.tokens.len() - 3 {
-        // assignment
-        if parser.phrase_compare(["*0", "=", "*1", ";"]) {
-            let val = var.get(&parser.tokens[parser.pos + 2]);
-            var.set(&parser.tokens[parser.pos], val);
-        }
-        // add
-        else if parser.phrase_compare(["*0", "=", "*1", "+", "*2", ";"]) {
-            let lhs = var.get(&parser.tokens[parser.pos + 2]);
-            let rhs = var.get(&parser.tokens[parser.pos + 4]);
-            var.set(&parser.tokens[parser.pos], lhs + rhs);
-        }
-        // subtract
-        else if parser.phrase_compare(["*0", "=", "*1", "-", "*2", ";"]) {
-            let lhs = var.get(&parser.tokens[parser.pos + 2]);
-            let rhs = var.get(&parser.tokens[parser.pos + 4]);
-            var.set(&parser.tokens[parser.pos], lhs - rhs);
-        }
-        // print
-        else if parser.phrase_compare(["print", "*0", ";"]) {
-            println!("{}", var.get(&parser.tokens[parser.pos + 1]));
-        }
-        // label
-        else if parser.phrase_compare(["*0", ":"]) {
-            parser.pos += 2;
-            continue;
-        }
-        // goto
-        else if parser.phrase_compare(["goto", "*0", ";"]) {
-            parser.pos = var.get(&parser.tokens[parser.pos + 1]) as usize;
-            continue;
-        }
-        // if (v0 op v1) goto label;
-        else if parser.phrase_compare(["if", "(", "*0", "*1", "*2", ")","goto", "*3", ";"]) {
-            let gpc = var.get(&parser.tokens[parser.pos + 7]) as usize;
-            let v0 = var.get(&parser.tokens[parser.pos + 2]);
-            let v1 = var.get(&parser.tokens[parser.pos + 4]);
-            if parser.tokens[parser.pos + 3].matches("==") && v0 == v1 {
-                parser.pos = gpc;
+    fn phrase_compare<const N: usize>(&mut self, phr: [&'static str; N]) -> bool {
+        for i in 0..N {
+            if phr[i].starts_with("*") {
+                let n = phr[i][1..].parse::<usize>().unwrap();
+                //self.internal_code.param[n] = Some(self.lexer.tokens[self.pos + i]);
                 continue;
-            }
-            if parser.tokens[parser.pos + 3].matches("!=") && v0 != v1 {
-                parser.pos = gpc;
-                continue;
-            }
-            if parser.tokens[parser.pos + 3].matches("<") && v0 < v1 {
-                parser.pos = gpc;
-                continue;
+            } else if !self.lexer.tokens[self.pos + i].matches(phr[i]) {
+                return false;
             }
         }
-        // time
-        else if parser.phrase_compare(["time", ";"]) {
-            unsafe {
-                println!("time: {}", ffi::clock() - t0);
-            }
-        } else if parser.tokens[parser.pos].matches(";") {
-            // do nothing
-        }
-        // syntax error
-        else {
-            panic!("Syntax error: {} {} {}", parser.tokens[parser.pos].string, parser.tokens[parser.pos + 1].string, parser.tokens[parser.pos + 2].string);
-        }
-        while !parser.tokens[parser.pos].matches(";") {
-            //println!("{:?}", parser.tokens[parser.pos]);
-            parser.pos += 1;
-        }
-        //println!("{:?}", parser.tokens[parser.pos]);
-        parser.pos += 1;
+        return true;
     }
+
+    fn compile(&mut self, var: &mut VariableMap) {
+        let t0 = unsafe {
+            ffi::clock()
+        };
+        
+        println!("{:?}", self.lexer.tokens);
+
+        // register labels
+        for pc in 0..self.lexer.tokens.len() - 3 {
+            if self.lexer.tokens[pc + 1].matches(":") {
+                var.set(&self.lexer.tokens[pc], pc as i32 + 2);
+            }
+        }
+
+        while self.pos < self.lexer.tokens.len() - 3 {
+            println!("{:?}", self.lexer.tokens[self.pos]);
+            // assignment
+            if self.phrase_compare(["*0", "=", "*1", ";"]) {
+                self.internal_code.op = Operation::Copy;
+                let val = var.get(&self.lexer.tokens[self.pos + 2]);
+                var.set(&self.lexer.tokens[self.pos], val);
+            }
+            // add
+            else if self.phrase_compare(["*0", "=", "*1", "+", "*2", ";"]) {
+                self.internal_code.op = Operation::Add;
+                let lhs = var.get(&self.lexer.tokens[self.pos + 2]);
+                let rhs = var.get(&self.lexer.tokens[self.pos + 4]);
+                var.set(&self.lexer.tokens[self.pos], lhs + rhs);
+            }
+            // subtract
+            else if self.phrase_compare(["*0", "=", "*1", "-", "*2", ";"]) {
+                self.internal_code.op = Operation::Sub;
+                let lhs = var.get(&self.lexer.tokens[self.pos + 2]);
+                let rhs = var.get(&self.lexer.tokens[self.pos + 4]);
+                var.set(&self.lexer.tokens[self.pos], lhs - rhs);
+            }
+            // print
+            else if self.phrase_compare(["print", "*0", ";"]) {
+                self.internal_code.op = Operation::Print;
+                println!("{}", var.get(&self.lexer.tokens[self.pos + 1]));
+            }
+            // label
+            else if self.phrase_compare(["*0", ":"]) {
+                self.pos += 2;
+                continue;
+            }
+            // goto
+            else if self.phrase_compare(["goto", "*0", ";"]) {
+                self.internal_code.op = Operation::Goto;
+                self.pos = var.get(&self.lexer.tokens[self.pos + 1]) as usize;
+                continue;
+            }
+            // if (v0 op v1) goto label;
+            else if self.phrase_compare(["if", "(", "*0", "*1", "*2", ")","goto", "*3", ";"]) {
+                let gpc = var.get(&self.lexer.tokens[self.pos + 7]) as usize;
+                let v0 = var.get(&self.lexer.tokens[self.pos + 2]);
+                let v1 = var.get(&self.lexer.tokens[self.pos + 4]);
+                if self.lexer.tokens[self.pos + 3].matches("==") && v0 == v1 {
+                    self.internal_code.op = Operation::Jeq;
+                    self.pos = gpc;
+                    continue;
+                }
+                if self.lexer.tokens[self.pos + 3].matches("!=") && v0 != v1 {
+                    self.internal_code.op = Operation::Jne;
+                    self.pos = gpc;
+                    continue;
+                }
+                if self.lexer.tokens[self.pos + 3].matches("<") && v0 < v1 {
+                    self.internal_code.op = Operation::Jlt;
+                    self.pos = gpc;
+                    continue;
+                }
+            }
+            // time
+            else if self.phrase_compare(["time", ";"]) {
+                self.internal_code.op = Operation::Time;
+                unsafe {
+                    println!("time: {}", ffi::clock() - t0);
+                }
+            } else if self.lexer.tokens[self.pos].matches(";") {
+                // do nothing
+            }
+            // syntax error
+            else {
+                panic!("Syntax error: {} {} {}", self.lexer.tokens[self.pos].string, self.lexer.tokens[self.pos + 1].string, self.lexer.tokens[self.pos + 2].string);
+            }
+            while !self.lexer.tokens[self.pos].matches(";") {
+                //println!("{:?}", tokens[pos]);
+                self.pos += 1;
+            }
+            //println!("{:?}", tokens[pos]);
+            self.pos += 1;
+        }
+    }
+}
+
+fn exec() {
+    todo!();
+}
+
+fn run(s: String, var_map: &mut VariableMap) {
+    let mut compiler = Compiler::new(s);
+    compiler.compile(var_map);
 }
 
 fn main() {
