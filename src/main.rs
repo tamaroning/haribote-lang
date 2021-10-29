@@ -160,48 +160,55 @@ impl VariableMap {
     }
 }
 
-struct Compiler {
+struct Parser {
     pos: usize,
     lexer: Lexer,
     internal_code: Vec<Operation>,
-    // token length of the current instruction 
-    cur_inst_len: usize,
     // temporary strage of operation parameters
     // see the difinition of phrase_compare
     cur_token_param: [Option<Token>; 4],
-    cur_expr_param: [Option<Token>; 4],
+    cur_expr_param_start_pos: [usize; 4],
     // the number of variables which is used
     // to store temporay results of culculation
     temp_var_cnt: usize,
 }
 
-impl Compiler {
+impl Parser {
     fn new(s: String) -> Self {
         let mut lexer = Lexer::new(s);
         lexer.lex();
-        Compiler {
+        Parser {
             pos: 0,
             lexer: lexer,
             internal_code: Vec::new(),
-            cur_inst_len: 0,
             cur_token_param: Default::default(),
-            cur_expr_param: Default::default(),
+            cur_expr_param_start_pos: [0; 4],
             temp_var_cnt: 0,
         }
     }
 
     fn make_temp_var(&mut self) -> Token {
-        let ret = Token::new(String::from(format!("_t{}", self.temp_var_cnt)));
+        let ret = Token::new(String::from(format!("_tmp{}", self.temp_var_cnt)));
         self.temp_var_cnt += 1;
         ret
     }
 
     fn primary(&mut self, start_pos: usize) -> (Token, usize) {
+        // ( expr )
+        if self.lexer.tokens[start_pos].matches("(") {
+            let mut len = 0;
+            len += 1;
+            let (expr_tok, expr_len) = self.expr(start_pos);
+            len += expr_len;
+            len += 1; // ")"
+            return (expr_tok, len);
+        }
+        // ident | num
         let ret = self.lexer.tokens[start_pos].clone();
         (ret, 1)
     }
 
-    fn add(&mut self, mut start_pos: usize) -> (Token, usize) {
+    fn add(&mut self, start_pos: usize) -> (Token, usize) {
         let mut len = 0;
         let (lhs, lhs_len) = self.primary(start_pos + len);
         len += lhs_len;
@@ -209,8 +216,7 @@ impl Compiler {
         
         if self.lexer.tokens[start_pos + len].matches("+") {
             len += 1;
-            start_pos += 1;
-            let (rhs, rhs_len) = self.add(start_pos + len);
+            let (rhs, rhs_len) = self.primary(start_pos + len);
             len += rhs_len;
             let op = Operation::Add(ret.clone(), lhs, rhs);
             self.push_internal_code(op);
@@ -225,32 +231,50 @@ impl Compiler {
         self.add(start_pos)
     }
 
+    fn get_expr_param(&mut self, idx: usize) -> (Token, usize) {
+        self.temp_var_cnt = 0;
+        self.expr(self.cur_expr_param_start_pos[idx])
+    }
+
     fn push_internal_code(&mut self, op: Operation) {
         self.internal_code.push(op);
     }
 
-    // This function set cur_inst_len, cur_token_param, and cur_expr_param
+    fn expr_len(&self, start_pos: usize) -> usize {
+        let mut i = start_pos;
+        while i < self.lexer.tokens.len() {
+            if self.lexer.tokens[i].matches(";") || self.lexer.tokens[i].matches(",") {
+                return i - start_pos;
+            }
+            i += 1;
+        }
+        return i - start_pos;
+    }
+
+    // This function set self.cur_token_param_start_pos, and add up self.pos
     // Before call this function, make sure that self.cur_inst_len=0 and that tokens[self.pos] matches the beginning of the phrase
     // When it satisfies, tokens[self.pos + self.cur_inst_len] essentially points to the beginning of the *tXX or *eXX
     fn phrase_compare<const N: usize>(&mut self, phr: [&'static str; N]) -> bool {
-        let inst_len = self.cur_inst_len;
+        let inst_start_pos = self.pos;
+        println!("phr: {:?}", phr);
         for i in 0..N {
+            println!("compare {:?} with {:?}", self.lexer.tokens[self.pos].string, phr[i]);
             if phr[i].starts_with("*t") {
                 let n = phr[i][2..].parse::<usize>().unwrap();
                 // TODO: this clone can be replaced something like Option::take?
-                self.cur_token_param[n] = Some(self.lexer.tokens[self.pos + self.cur_inst_len].clone());
+                self.cur_token_param[n] = Some(self.lexer.tokens[self.pos].clone());
             } else if phr[i].starts_with("*e") {
                 let n = phr[i][2..].parse::<usize>().unwrap();
-                let (expr_tok, expr_len) = self.expr(self.pos + self.cur_inst_len);
-                self.cur_expr_param[n] = Some(expr_tok);
-                self.cur_inst_len += expr_len;
+                self.cur_expr_param_start_pos[n] = self.pos;
+                let expr_len = self.expr_len(self.pos);
+                self.pos += expr_len;
                 continue;
-            } else if !self.lexer.tokens[self.pos + self.cur_inst_len].matches(phr[i]) {
+            } else if !self.lexer.tokens[self.pos].matches(phr[i]) {
                 // unwind
-                self.cur_inst_len = inst_len;
+                self.pos = inst_start_pos;
                 return false;
             }
-            self.cur_inst_len += 1;
+            self.pos += 1;
         }
         return true;
     }
@@ -258,7 +282,6 @@ impl Compiler {
     fn compile(&mut self, var: &mut VariableMap) {
         while self.pos < self.lexer.tokens.len() - 3 {
             println!("instruction starts with tokens[{}]={:?}", self.pos, self.lexer.tokens[self.pos]);
-            self.cur_inst_len = 0;
             // assignment
             if self.phrase_compare(["*t0", "=", "*t1", ";"]) {
                 let param0 = self.cur_token_param[0].take().unwrap();
@@ -281,14 +304,14 @@ impl Compiler {
             }
             // print
             else if self.phrase_compare(["print", "*e0", ";"]) {
-                let expr_param0 = Operation::Print(self.cur_expr_param[0].take().unwrap());
+                let expr0 = self.get_expr_param(0).0;
+                let expr_param0 = Operation::Print(expr0);
                 self.push_internal_code(expr_param0);
             }
             // label
             else if self.phrase_compare(["*t0", ":"]) {
                 let label = self.cur_token_param[0].take().unwrap();
                 var.set(&label, self.internal_code.len() as i32);
-                self.pos += 2;
                 continue;
             }
             // goto
@@ -314,7 +337,6 @@ impl Compiler {
             else if self.phrase_compare(["time", ";"]) {
                 self.push_internal_code(Operation::Time);
             } else if self.lexer.tokens[self.pos].matches(";") {
-                self.pos += 1;
                 continue;
             }
             // syntax error
@@ -326,11 +348,13 @@ impl Compiler {
                     self.lexer.tokens[self.pos + 2].string,
                 );
             }
-            self.pos += self.cur_inst_len;
         }
     }
 
     fn exec(&self, var_map: &mut VariableMap) {
+        for ic in &self.internal_code {
+            println!("{:?}", ic);
+        }
         let t0 = unsafe { ffi::clock() };
 
         let mut pc = 0;
@@ -392,9 +416,9 @@ impl Compiler {
 }
 
 fn run(s: String, var_map: &mut VariableMap) {
-    let mut compiler = Compiler::new(s);
-    compiler.compile(var_map);
-    compiler.exec(var_map);
+    let mut parser = Parser::new(s);
+    parser.compile(var_map);
+    parser.exec(var_map);
 }
 
 fn main() {
