@@ -201,7 +201,6 @@ impl Parser {
     }
 
     fn primary(&mut self) -> Token {
-        println!("primary starts with {:?}", self.lexer.tokens[self.expr_pos]);
         // ( expr )
         if self.lexer.tokens[self.expr_pos].matches("(") {
             self.expr_pos += 1; // "("
@@ -311,9 +310,9 @@ impl Parser {
     // When it satisfies, tokens[self.pos + self.cur_inst_len] essentially points to the beginning of the *tXX or *eXX
     fn phrase_compare<const N: usize>(&mut self, phr: [&'static str; N]) -> bool {
         let inst_start_pos = self.pos;
-        println!("phr: {:?}", phr);
+        //println!("phr: {:?}", phr);
         for i in 0..N {
-            println!("compare {:?} with {:?}", self.lexer.tokens[self.pos].string, phr[i]);
+            //println!("compare {:?} with {:?}", self.lexer.tokens[self.pos].string, phr[i]);
             if phr[i].starts_with("*t") {
                 let n = phr[i][2..].parse::<usize>().unwrap();
                 // TODO: this clone can be replaced something like Option::take?
