@@ -168,6 +168,9 @@ struct Parser {
     // see the difinition of phrase_compare
     cur_token_param: [Option<Token>; 4],
     cur_expr_param_start_pos: [usize; 4],
+    
+    // these two are used only to parse expressions
+    expr_pos: usize,
     // the number of variables which is used
     // to store temporay results of culculation
     temp_var_cnt: usize,
@@ -183,6 +186,7 @@ impl Parser {
             internal_code: Vec::new(),
             cur_token_param: Default::default(),
             cur_expr_param_start_pos: [0; 4],
+            expr_pos: 0,
             temp_var_cnt: 0,
         }
     }
@@ -193,47 +197,47 @@ impl Parser {
         ret
     }
 
-    fn primary(&mut self, start_pos: usize) -> (Token, usize) {
+    fn primary(&mut self) -> Token {
+        println!("primary starts with {:?}", self.lexer.tokens[self.expr_pos]);
         // ( expr )
-        if self.lexer.tokens[start_pos].matches("(") {
-            let mut len = 0;
-            len += 1;
-            let (expr_tok, expr_len) = self.expr(start_pos);
-            len += expr_len;
-            len += 1; // ")"
-            return (expr_tok, len);
+        if self.lexer.tokens[self.expr_pos].matches("(") {
+            self.expr_pos += 1; // "("
+            let ret = self.expr();
+            self.expr_pos += 1; // ")"
+            return ret;
         }
         // ident | num
-        let ret = self.lexer.tokens[start_pos].clone();
-        (ret, 1)
+        let ret = self.lexer.tokens[self.expr_pos].clone();
+        self.expr_pos += 1;
+        ret
     }
 
-    fn add(&mut self, start_pos: usize) -> (Token, usize) {
-        let mut len = 0;
-        let (lhs, lhs_len) = self.primary(start_pos + len);
-        len += lhs_len;
-        let ret = self.make_temp_var();
-        
-        if self.lexer.tokens[start_pos + len].matches("+") {
-            len += 1;
-            let (rhs, rhs_len) = self.primary(start_pos + len);
-            len += rhs_len;
-            let op = Operation::Add(ret.clone(), lhs, rhs);
-            self.push_internal_code(op);
-        } else {
-            let op = Operation::Copy(ret.clone(), lhs);
-            self.push_internal_code(op);
+    fn add(&mut self) -> Token {
+        let mut ret = self.primary();
+        while self.expr_pos < self.lexer.tokens.len() {
+            if self.lexer.tokens[self.expr_pos].matches("+") {
+                self.expr_pos += 1; // +
+                let primary = self.primary();
+                let tmp = self.make_temp_var();
+                let op = Operation::Add(tmp.clone(), ret, primary);
+                self.push_internal_code(op);
+                ret = tmp;
+            } else {
+                break;
+            }
         }
-        (ret, len)
+        ret
     }
 
-    fn expr(&mut self, start_pos: usize) -> (Token, usize) {
-        self.add(start_pos)
+    // parse an expression, the begging expression of which is self.expr_pos
+    fn expr(&mut self) -> Token {
+        self.add()
     }
 
-    fn get_expr_param(&mut self, idx: usize) -> (Token, usize) {
+    fn get_expr_param(&mut self, idx: usize) -> Token {
         self.temp_var_cnt = 0;
-        self.expr(self.cur_expr_param_start_pos[idx])
+        self.expr_pos = self.cur_expr_param_start_pos[idx];
+        self.expr()
     }
 
     fn push_internal_code(&mut self, op: Operation) {
@@ -304,7 +308,7 @@ impl Parser {
             }
             // print
             else if self.phrase_compare(["print", "*e0", ";"]) {
-                let expr0 = self.get_expr_param(0).0;
+                let expr0 = self.get_expr_param(0);
                 let expr_param0 = Operation::Print(expr0);
                 self.push_internal_code(expr_param0);
             }
