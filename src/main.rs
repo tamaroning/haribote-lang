@@ -171,12 +171,40 @@ struct Parser {
     // see the difinition of phrase_compare
     cur_token_param: [Option<Token>; 4],
     cur_expr_param_start_pos: [usize; 4],
-    
+
     // these two are used only to parse expressions
     expr_pos: usize,
     // the number of variables which is used
     // to store temporay results of culculation
     temp_var_cnt: usize,
+}
+
+macro_rules! parse_binary_op {
+    ($func_name:ident, $child:ident, $op1:expr, $op2:expr) => {
+        fn $func_name(&mut self) -> Token {
+            let mut ret = self.unary();
+            while self.expr_pos < self.lexer.tokens.len() {
+                if self.lexer.tokens[self.expr_pos].matches($op1) {
+                    self.expr_pos += 1;
+                    let $child = self.$child();
+                    let tmp = self.make_temp_var();
+                    let op = Operation::Mul(tmp.clone(), ret, $child);
+                    self.push_internal_code(op);
+                    ret = tmp;
+                } else if self.lexer.tokens[self.expr_pos].matches($op2) {
+                    self.expr_pos += 1;
+                    let $child = self.$child();
+                    let tmp = self.make_temp_var();
+                    let op = Operation::Div(tmp.clone(), ret, $child);
+                    self.push_internal_code(op);
+                    ret = tmp;
+                } else {
+                    break;
+                }
+            }
+            ret
+        }
+    };
 }
 
 impl Parser {
@@ -231,53 +259,8 @@ impl Parser {
         return self.primary();
     }
 
-    fn mul(&mut self) -> Token {
-        let mut ret = self.unary();
-        while self.expr_pos < self.lexer.tokens.len() {
-            if self.lexer.tokens[self.expr_pos].matches("*") {
-                self.expr_pos += 1; // *
-                let unary = self.unary();
-                let tmp = self.make_temp_var();
-                let op = Operation::Mul(tmp.clone(), ret, unary);
-                self.push_internal_code(op);
-                ret = tmp;
-            } else if self.lexer.tokens[self.expr_pos].matches("/") {
-                self.expr_pos += 1; // /
-                let unary = self.unary();
-                let tmp = self.make_temp_var();
-                let op = Operation::Div(tmp.clone(), ret, unary);
-                self.push_internal_code(op);
-                ret = tmp;
-            } else {
-                break;
-            }
-        }
-        ret
-    }
-
-    fn add(&mut self) -> Token {
-        let mut ret = self.mul();
-        while self.expr_pos < self.lexer.tokens.len() {
-            if self.lexer.tokens[self.expr_pos].matches("+") {
-                self.expr_pos += 1; // +
-                let mul = self.mul();
-                let tmp = self.make_temp_var();
-                let op = Operation::Add(tmp.clone(), ret, mul);
-                self.push_internal_code(op);
-                ret = tmp;
-            } else if self.lexer.tokens[self.expr_pos].matches("-") {
-                self.expr_pos += 1; // -
-                let mul = self.mul();
-                let tmp = self.make_temp_var();
-                let op = Operation::Sub(tmp.clone(), ret, mul);
-                self.push_internal_code(op);
-                ret = tmp;
-            } else {
-                break;
-            }
-        }
-        ret
-    }
+    parse_binary_op!(mul, unary, "*", "/");
+    parse_binary_op!(add, mul, "+", "/");
 
     // parse an expression, the begging expression of which is self.expr_pos
     fn expr(&mut self) -> Token {
@@ -335,7 +318,10 @@ impl Parser {
 
     fn compile(&mut self, var: &mut VariableMap) {
         while self.pos < self.lexer.tokens.len() - 3 {
-            println!("instruction starts with tokens[{}]={:?}", self.pos, self.lexer.tokens[self.pos]);
+            println!(
+                "instruction starts with tokens[{}]={:?}",
+                self.pos, self.lexer.tokens[self.pos]
+            );
             // (simple) assignment
             if self.phrase_compare(["*t0", "=", "*t1", ";"]) {
                 let param0 = self.cur_token_param[0].take().unwrap();
@@ -380,7 +366,8 @@ impl Parser {
                 self.push_internal_code(Operation::Goto(param0));
             }
             // if (v0 op v1) goto label;
-            else if self.phrase_compare(["if", "(", "*t0", "*t1", "*t2", ")", "goto", "*t3", ";"]) {
+            else if self.phrase_compare(["if", "(", "*t0", "*t1", "*t2", ")", "goto", "*t3", ";"])
+            {
                 let label = self.cur_token_param[3].take().unwrap();
                 let lhs = self.cur_token_param[0].take().unwrap();
                 let rhs = self.cur_token_param[2].take().unwrap();
