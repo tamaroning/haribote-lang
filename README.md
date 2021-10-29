@@ -1,6 +1,8 @@
 # Haribote-lang
+はりぼて言語をRustで実装する
 
-benchmark
-hl3.harib
-step | time
-#5 8759 -> 10015
+# Benchmark
+| step | processor time |
+| ---- | ---- |
+|  #5  |  470 |
+|  #6  |  213 |
