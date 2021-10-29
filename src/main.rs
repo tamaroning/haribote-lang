@@ -114,6 +114,8 @@ enum Operation {
     Copy(Token, Token),
     Add(Token, Token, Token),
     Sub(Token, Token, Token),
+    Mul(Token, Token, Token),
+    Div(Token, Token, Token),
     Print(Token),
     Time,
     Goto(Token),
@@ -160,6 +162,7 @@ impl VariableMap {
     }
 }
 
+// TODO: this is dirty. Is it better to make an expression parser?
 struct Parser {
     pos: usize,
     lexer: Lexer,
@@ -203,6 +206,9 @@ impl Parser {
         if self.lexer.tokens[self.expr_pos].matches("(") {
             self.expr_pos += 1; // "("
             let ret = self.expr();
+            if !self.lexer.tokens[self.expr_pos].matches(")") {
+                panic!("Missing parentheses");
+            }
             self.expr_pos += 1; // ")"
             return ret;
         }
@@ -212,14 +218,45 @@ impl Parser {
         ret
     }
 
-    fn add(&mut self) -> Token {
+    fn mul(&mut self) -> Token {
         let mut ret = self.primary();
+        while self.expr_pos < self.lexer.tokens.len() {
+            if self.lexer.tokens[self.expr_pos].matches("*") {
+                self.expr_pos += 1; // *
+                let primary = self.primary();
+                let tmp = self.make_temp_var();
+                let op = Operation::Mul(tmp.clone(), ret, primary);
+                self.push_internal_code(op);
+                ret = tmp;
+            } else if self.lexer.tokens[self.expr_pos].matches("/") {
+                self.expr_pos += 1; // /
+                let primary = self.primary();
+                let tmp = self.make_temp_var();
+                let op = Operation::Div(tmp.clone(), ret, primary);
+                self.push_internal_code(op);
+                ret = tmp;
+            } else {
+                break;
+            }
+        }
+        ret
+    }
+
+    fn add(&mut self) -> Token {
+        let mut ret = self.mul();
         while self.expr_pos < self.lexer.tokens.len() {
             if self.lexer.tokens[self.expr_pos].matches("+") {
                 self.expr_pos += 1; // +
-                let primary = self.primary();
+                let mul = self.mul();
                 let tmp = self.make_temp_var();
-                let op = Operation::Add(tmp.clone(), ret, primary);
+                let op = Operation::Add(tmp.clone(), ret, mul);
+                self.push_internal_code(op);
+                ret = tmp;
+            } else if self.lexer.tokens[self.expr_pos].matches("-") {
+                self.expr_pos += 1; // -
+                let mul = self.mul();
+                let tmp = self.make_temp_var();
+                let op = Operation::Sub(tmp.clone(), ret, mul);
                 self.push_internal_code(op);
                 ret = tmp;
             } else {
@@ -286,7 +323,7 @@ impl Parser {
     fn compile(&mut self, var: &mut VariableMap) {
         while self.pos < self.lexer.tokens.len() - 3 {
             println!("instruction starts with tokens[{}]={:?}", self.pos, self.lexer.tokens[self.pos]);
-            // assignment
+            // (simple) assignment
             if self.phrase_compare(["*t0", "=", "*t1", ";"]) {
                 let param0 = self.cur_token_param[0].take().unwrap();
                 let param1 = self.cur_token_param[1].take().unwrap();
@@ -305,6 +342,12 @@ impl Parser {
                 let param1 = self.cur_token_param[1].take().unwrap();
                 let param2 = self.cur_token_param[2].take().unwrap();
                 self.push_internal_code(Operation::Sub(param0, param1, param2));
+            }
+            // (complicated) assignment
+            else if self.phrase_compare(["*t0", "=", "*e0", ";"]) {
+                let param0 = self.cur_token_param[0].take().unwrap();
+                let expr0 = self.get_expr_param(0);
+                self.push_internal_code(Operation::Copy(param0, expr0));
             }
             // print
             else if self.phrase_compare(["print", "*e0", ";"]) {
@@ -377,6 +420,19 @@ impl Parser {
                     let lhs_val = var_map.get(lhs);
                     let rhs_val = var_map.get(rhs);
                     var_map.set(dist, lhs_val + rhs_val);
+                }
+                Operation::Mul(ref dist, ref lhs, ref rhs) => {
+                    let lhs_val = var_map.get(lhs);
+                    let rhs_val = var_map.get(rhs);
+                    var_map.set(dist, lhs_val * rhs_val);
+                }
+                Operation::Div(ref dist, ref lhs, ref rhs) => {
+                    let lhs_val = var_map.get(lhs);
+                    let rhs_val = var_map.get(rhs);
+                    if rhs_val == 0 {
+                        panic!("Zero division error");
+                    }
+                    var_map.set(dist, lhs_val / rhs_val);
                 }
                 Operation::Print(ref var) => {
                     let val = var_map.get(var);
