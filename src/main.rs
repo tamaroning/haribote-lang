@@ -218,21 +218,35 @@ impl Parser {
         ret
     }
 
+    fn unary(&mut self) -> Token {
+        if self.lexer.tokens[self.expr_pos].matches("-") {
+            self.expr_pos += 1;
+            let tmp = self.make_temp_var();
+            let op = Operation::Sub(tmp.clone(), Token::new(String::from("0")), self.primary());
+            self.push_internal_code(op);
+            return tmp;
+        } else if self.lexer.tokens[self.expr_pos].matches("+") {
+            self.expr_pos += 1;
+            return self.primary();
+        }
+        return self.primary();
+    }
+
     fn mul(&mut self) -> Token {
-        let mut ret = self.primary();
+        let mut ret = self.unary();
         while self.expr_pos < self.lexer.tokens.len() {
             if self.lexer.tokens[self.expr_pos].matches("*") {
                 self.expr_pos += 1; // *
-                let primary = self.primary();
+                let unary = self.unary();
                 let tmp = self.make_temp_var();
-                let op = Operation::Mul(tmp.clone(), ret, primary);
+                let op = Operation::Mul(tmp.clone(), ret, unary);
                 self.push_internal_code(op);
                 ret = tmp;
             } else if self.lexer.tokens[self.expr_pos].matches("/") {
                 self.expr_pos += 1; // /
-                let primary = self.primary();
+                let unary = self.unary();
                 let tmp = self.make_temp_var();
-                let op = Operation::Div(tmp.clone(), ret, primary);
+                let op = Operation::Div(tmp.clone(), ret, unary);
                 self.push_internal_code(op);
                 ret = tmp;
             } else {
@@ -343,7 +357,7 @@ impl Parser {
                 let param2 = self.cur_token_param[2].take().unwrap();
                 self.push_internal_code(Operation::Sub(param0, param1, param2));
             }
-            // (complicated) assignment
+            // (complicated) assignment (This can interpret the first three syntax)
             else if self.phrase_compare(["*t0", "=", "*e0", ";"]) {
                 let param0 = self.cur_token_param[0].take().unwrap();
                 let expr0 = self.get_expr_param(0);
@@ -419,7 +433,7 @@ impl Parser {
                 Operation::Sub(ref dist, ref lhs, ref rhs) => {
                     let lhs_val = var_map.get(lhs);
                     let rhs_val = var_map.get(rhs);
-                    var_map.set(dist, lhs_val + rhs_val);
+                    var_map.set(dist, lhs_val - rhs_val);
                 }
                 Operation::Mul(ref dist, ref lhs, ref rhs) => {
                     let lhs_val = var_map.get(lhs);
