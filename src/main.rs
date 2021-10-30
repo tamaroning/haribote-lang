@@ -180,22 +180,22 @@ struct Parser {
 }
 
 macro_rules! parse_binary_op {
-    ($func_name:ident, $child:ident, $op1:expr, $op2:expr) => {
+    ($func_name:ident, $child:ident, $op1:expr, $path1:path, $op2:expr, $path2:path) => {
         fn $func_name(&mut self) -> Token {
-            let mut ret = self.unary();
+            let mut ret = self.$child();
             while self.expr_pos < self.lexer.tokens.len() {
                 if self.lexer.tokens[self.expr_pos].matches($op1) {
                     self.expr_pos += 1;
                     let $child = self.$child();
                     let tmp = self.make_temp_var();
-                    let op = Operation::Mul(tmp.clone(), ret, $child);
+                    let op = $path1(tmp.clone(), ret, $child);
                     self.push_internal_code(op);
                     ret = tmp;
                 } else if self.lexer.tokens[self.expr_pos].matches($op2) {
                     self.expr_pos += 1;
                     let $child = self.$child();
                     let tmp = self.make_temp_var();
-                    let op = Operation::Div(tmp.clone(), ret, $child);
+                    let op = $path2(tmp.clone(), ret, $child);
                     self.push_internal_code(op);
                     ret = tmp;
                 } else {
@@ -259,8 +259,8 @@ impl Parser {
         return self.primary();
     }
 
-    parse_binary_op!(mul, unary, "*", "/");
-    parse_binary_op!(add, mul, "+", "/");
+    parse_binary_op!(mul, unary, "*", Operation::Mul, "/", Operation::Div);
+    parse_binary_op!(add, mul, "+", Operation::Add, "-", Operation::Sub);
 
     // parse an expression, the begging expression of which is self.expr_pos
     fn expr(&mut self) -> Token {
