@@ -548,3 +548,37 @@ fn main() {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_numerical_literals() {
+        let mut var = VariableMap::new();
+        assert_eq!(var.get(&Token::new(String::from("100"))), 100);
+        assert_eq!(var.get(&Token::new(String::from("+0"))), 0);
+        assert_eq!(var.get(&Token::new(String::from("-30"))), -30);
+    }
+
+    #[test]
+    fn test_lexer() {
+        let src = String::from("v200 = 200; if(v200 / 4 == 900) goto end;");
+        let mut lexer = Lexer::new(src);
+        lexer.lex();
+        let mut tok_strs = Vec::new();
+        for tok in lexer.tokens {
+            tok_strs.push(tok.string);
+        }
+        assert_eq!(tok_strs, vec!["v200", "=", "200", ";", "if", "(", "v200", "/", "4", "==", "900", ")", "goto" , "end", ";", ".", ".", "."]);
+    }
+
+    #[test]
+    fn test_add() {
+        let src = String::from("result = 100 + 200 - 50;");
+        let mut var = VariableMap::new();
+        run(src, &mut var);
+        let result = var.get(&Token::new(String::from("result")));
+        assert_eq!(result, 250);
+    }
+}
