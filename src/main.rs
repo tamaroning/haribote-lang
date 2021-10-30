@@ -111,17 +111,19 @@ impl Lexer {
 
 #[derive(Debug)]
 enum Operation {
-    Copy(Token, Token),
-    Add(Token, Token, Token),
+    Copy(Token, Token), // to, from
+    Add(Token, Token, Token), // dist, lhs, rhs
     Sub(Token, Token, Token),
     Mul(Token, Token, Token),
     Div(Token, Token, Token),
+    Eq(Token, Token, Token),
+    Ne(Token, Token, Token),
+    Lt(Token, Token, Token),
+    Le(Token, Token, Token),
     Print(Token),
     Time,
     Goto(Token),
-    Jeq(Token, Token, Token),
-    Jne(Token, Token, Token),
-    Jlt(Token, Token, Token),
+    IfGoto(Token, Token), // cond, label
 }
 
 struct VariableMap {
@@ -261,10 +263,12 @@ impl Parser {
 
     parse_binary_op!(mul, unary, "*", Operation::Mul, "/", Operation::Div);
     parse_binary_op!(add, mul, "+", Operation::Add, "-", Operation::Sub);
+    parse_binary_op!(relational, add, "<", Operation::Lt, "<=", Operation::Le);
+    parse_binary_op!(equality, relational, "==", Operation::Eq, "!=", Operation::Ne);
 
     // parse an expression, the begging expression of which is self.expr_pos
     fn expr(&mut self) -> Token {
-        self.add()
+        self.equality()
     }
 
     fn get_expr_param(&mut self, idx: usize) -> Token {
@@ -277,15 +281,41 @@ impl Parser {
         self.internal_code.push(op);
     }
 
-    fn expr_len(&self, start_pos: usize) -> usize {
-        let mut i = start_pos;
-        while i < self.lexer.tokens.len() {
-            if self.lexer.tokens[i].matches(";") || self.lexer.tokens[i].matches(",") {
-                return i - start_pos;
+    fn expr_len(&self, mut start_pos: usize) -> usize {
+        let mut len = 0;
+        match self.lexer.tokens[start_pos].string.as_str() {
+            "(" => {
+                start_pos += 1;
+                len += 1;
+                let inside_len = self.expr_len(start_pos);
+                start_pos += inside_len;
+                len += inside_len;
+                if !self.lexer.tokens[start_pos].matches(")") {
+                    panic!("Missing parentheses");
+                }
+                start_pos += 1;
+                len += 1;
+                return len;
             }
-            i += 1;
+            _ => {
+                //numerical literals or variables
+                start_pos += 1;
+                len += 1;
+                while start_pos < self.lexer.tokens.len() {
+                    if let "+" | "-" | "*" | "/" | "==" | "!=" | "<" | "<=" = self.lexer.tokens[start_pos].string.as_str() {
+                        start_pos += 1;
+                        len += 1;
+                        let rhs_len = self.expr_len(start_pos);
+                        start_pos += rhs_len;
+                        len += rhs_len;
+                    } else {
+                        break;
+                    }
+                }
+                return len;
+            }
+            
         }
-        return i - start_pos;
     }
 
     // This function set self.cur_token_param_start_pos, and add up self.pos
@@ -365,20 +395,12 @@ impl Parser {
                 let param0 = self.cur_token_param[0].take().unwrap();
                 self.push_internal_code(Operation::Goto(param0));
             }
-            // if (v0 op v1) goto label;
-            else if self.phrase_compare(["if", "(", "*t0", "*t1", "*t2", ")", "goto", "*t3", ";"])
+            // if ( e0 ) goto label;
+            else if self.phrase_compare(["if", "(", "*e0", ")", "goto", "*t0", ";"])
             {
-                let label = self.cur_token_param[3].take().unwrap();
-                let lhs = self.cur_token_param[0].take().unwrap();
-                let rhs = self.cur_token_param[2].take().unwrap();
-                let bin_op = &self.cur_token_param[1].take().unwrap();
-                if &bin_op.string == "==" {
-                    self.push_internal_code(Operation::Jeq(lhs, rhs, label));
-                } else if &bin_op.string == "!=" {
-                    self.push_internal_code(Operation::Jne(lhs, rhs, label));
-                } else if &bin_op.string == "<" {
-                    self.push_internal_code(Operation::Jlt(lhs, rhs, label));
-                }
+                let label = self.cur_token_param[0].take().unwrap();
+                let expr0 = self.get_expr_param(0);
+                self.push_internal_code(Operation::IfGoto(expr0, label));
             }
             // time
             else if self.phrase_compare(["time", ";"]) {
@@ -434,6 +456,26 @@ impl Parser {
                     }
                     var_map.set(dist, lhs_val / rhs_val);
                 }
+                Operation::Eq(ref dist, ref lhs, ref rhs) => {
+                    let lhs_val = var_map.get(lhs);
+                    let rhs_val = var_map.get(rhs);
+                    var_map.set(dist, if lhs_val == rhs_val {1} else {0});
+                }
+                Operation::Ne(ref dist, ref lhs, ref rhs) => {
+                    let lhs_val = var_map.get(lhs);
+                    let rhs_val = var_map.get(rhs);
+                    var_map.set(dist, if lhs_val != rhs_val {1} else {0});
+                }
+                Operation::Lt(ref dist, ref lhs, ref rhs) => {
+                    let lhs_val = var_map.get(lhs);
+                    let rhs_val = var_map.get(rhs);
+                    var_map.set(dist, if lhs_val < rhs_val {1} else {0});
+                }
+                Operation::Le(ref dist, ref lhs, ref rhs) => {
+                    let lhs_val = var_map.get(lhs);
+                    let rhs_val = var_map.get(rhs);
+                    var_map.set(dist, if lhs_val <= rhs_val {1} else {0});
+                }
                 Operation::Print(ref var) => {
                     let val = var_map.get(var);
                     println!("{}", val);
@@ -442,26 +484,9 @@ impl Parser {
                     pc = var_map.get(label) as usize;
                     continue;
                 }
-                Operation::Jeq(ref lhs, ref rhs, ref label) => {
-                    let lhs_val = var_map.get(lhs);
-                    let rhs_val = var_map.get(rhs);
-                    if lhs_val == rhs_val {
-                        pc = var_map.get(label) as usize;
-                        continue;
-                    }
-                }
-                Operation::Jne(ref lhs, ref rhs, ref label) => {
-                    let lhs_val = var_map.get(lhs);
-                    let rhs_val = var_map.get(rhs);
-                    if lhs_val != rhs_val {
-                        pc = var_map.get(label) as usize;
-                        continue;
-                    }
-                }
-                Operation::Jlt(ref lhs, ref rhs, ref label) => {
-                    let lhs_val = var_map.get(lhs);
-                    let rhs_val = var_map.get(rhs);
-                    if lhs_val < rhs_val {
+                Operation::IfGoto(ref cond, ref label) => {
+                    let cond_val = var_map.get(cond);
+                    if cond_val != 0 {
                         pc = var_map.get(label) as usize;
                         continue;
                     }
