@@ -414,10 +414,7 @@ impl Parser {
 
     fn compile(&mut self, var: &mut VariableMap) {
         while self.pos < self.lexer.tokens.len() - 3 {
-            println!(
-                "Statement starts with tokens[{}]={:?}",
-                self.pos, self.lexer.tokens[self.pos]
-            );
+            // println!("Statement starts with tokens[{}]={:?}", self.pos, self.lexer.tokens[self.pos]);
             // (simple) assignment
             if self.phrase_compare(["*t0", "=", "*t1", ";"]) {
                 let param0 = self.cur_token_param[0].take().unwrap();
@@ -526,7 +523,7 @@ impl Parser {
             // IfGoto(!e1, L0) (output if e1 exists)
             // L1:
             // A
-            // L2:
+            // L2: (this label is referred by "continue")
             // evaluate e2 (output if e2 exists)
             // IfGoto(e1, L1) (Goto(L1) is output if e1 dosen't exist)
             // L0:
@@ -605,10 +602,42 @@ impl Parser {
         }
     }
 
-    fn exec(&self, var_map: &mut VariableMap) {
+    fn dump_internal_code(&self, var_map: &mut VariableMap) {
+        let mut label_map: HashMap<i32, Vec<Token>> = HashMap::new();
+        // collect labels reference of which exists
         for ic in &self.internal_code {
-            println!("{:?}", ic);
+            match ic {
+                &Operation::Goto(ref label) | &Operation::IfGoto(_, ref label)=> {
+                    let label_pos = var_map.get(label);
+                    let opt_labels = label_map.remove(&label_pos);
+                    match opt_labels {
+                        Some(mut labels) => {
+                            labels.push(label.clone());
+                            label_map.insert(label_pos, labels);
+                        }
+                        None => {
+                            label_map.insert(label_pos, vec![label.clone()]);
+                        }
+                    }
+                }
+                _ => (),
+            }
         }
+        println!("--------------- Dump of internal code ---------------");
+        for i in 0..=self.internal_code.len() {
+            if let Some(labels) = label_map.remove(&(i as i32)) {
+                for label in labels {
+                    println!("{}:", label.string);
+                }
+            }
+            if i != self.internal_code.len() {
+                println!("    {:?}", self.internal_code[i]);
+            }
+        }
+        println!("-----------------------------------------------------");
+    } 
+
+    fn exec(&self, var_map: &mut VariableMap) {
         let t0 = unsafe { ffi::clock() };
 
         let mut pc = 0;
@@ -688,6 +717,7 @@ impl Parser {
 fn run(s: String, var_map: &mut VariableMap) {
     let mut parser = Parser::new(s);
     parser.compile(var_map);
+    parser.dump_internal_code(var_map);
     parser.exec(var_map);
 }
 
