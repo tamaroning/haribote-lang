@@ -4,6 +4,7 @@ use std::env;
 use std::fs::File;
 use std::io;
 use std::io::prelude::*;
+use std::ptr::eq;
 use std::str;
 
 mod ffi {
@@ -12,7 +13,7 @@ mod ffi {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct Token {
     string: String,
 }
@@ -164,6 +165,12 @@ impl VariableMap {
     }
 }
 
+#[derive(PartialEq, Eq)]
+enum Block {
+    IfElse(Token, Option<Token>), // L0, L1
+    For(Token, Token, Token, usize, usize) // L0, L1, L2, e1_start, e2_start
+}
+
 // TODO: this is dirty. Is it better to make an expression parser?
 struct Parser {
     pos: usize,
@@ -180,8 +187,7 @@ struct Parser {
     // to store temporay results of culculation
     temp_var_cnt: usize,
     temp_label_cnt: usize,
-    // the temporary labels emitted when parsing closing block "}"
-    control_frow_labels: Vec<Token>,
+    blocks: Vec<Block>,
 }
 
 macro_rules! parse_binary_op {
@@ -225,7 +231,7 @@ impl Parser {
             expr_pos: 0,
             temp_var_cnt: 0,
             temp_label_cnt: 0,
-            control_frow_labels: Vec::new(),
+            blocks: Vec::new(),
         }
     }
 
@@ -276,14 +282,44 @@ impl Parser {
     parse_binary_op!(relational, add, "<", Operation::Lt, "<=", Operation::Le);
     parse_binary_op!(equality, relational, "==", Operation::Eq, "!=", Operation::Ne);
 
-    // parse an expression, the begging expression of which is self.expr_pos
-    fn expr(&mut self) -> Token {
-        self.equality()
+    fn assign(&mut self) -> Token {
+        let equality = self.equality();
+        if self.lexer.tokens[self.expr_pos].matches("=") {
+            self.expr_pos += 1;
+            let assign = self.assign();
+            self.push_internal_code(Operation::Copy(equality, assign.clone()));
+            return assign;
+        }
+        equality
     }
 
+    // parse an expression whose starts from self.expr_pos
+    fn expr(&mut self) -> Token {
+        self.assign()
+    }
+
+    // TODO: Refactor
     fn get_expr_param(&mut self, idx: usize) -> Token {
+        self.evaluate_expr(self.cur_expr_param_start_pos[idx])
+    }
+
+    fn get_expr_opt_param(&mut self, idx: usize) -> Option<Token> {
+        self.evaluate_opt_expr(self.cur_expr_param_start_pos[idx])
+    }
+
+    // evaluate optional expression
+    fn evaluate_opt_expr(&mut self, start_pos: usize) -> Option<Token> {
+        if self.lexer.tokens[start_pos].matches(";") {
+            return None;
+        }
         self.temp_var_cnt = 0;
-        self.expr_pos = self.cur_expr_param_start_pos[idx];
+        self.expr_pos = start_pos;
+        Some(self.expr())
+    }
+
+    fn evaluate_expr(&mut self, start_pos: usize) -> Token {
+        self.temp_var_cnt = 0;
+        self.expr_pos = start_pos;
         self.expr()
     }
 
@@ -301,7 +337,7 @@ impl Parser {
                 start_pos += inside_len;
                 len += inside_len;
                 if !self.lexer.tokens[start_pos].matches(")") {
-                    panic!("Missing parentheses");
+                    panic!("Missing closing parentheses");
                 }
                 start_pos += 1;
                 len += 1;
@@ -312,7 +348,7 @@ impl Parser {
                 start_pos += 1;
                 len += 1;
                 while start_pos < self.lexer.tokens.len() {
-                    if let "+" | "-" | "*" | "/" | "==" | "!=" | "<" | "<=" = self.lexer.tokens[start_pos].string.as_str() {
+                    if let "+" | "-" | "*" | "/" | "==" | "!=" | "<" | "<=" | "=" = self.lexer.tokens[start_pos].string.as_str() {
                         start_pos += 1;
                         len += 1;
                         let rhs_len = self.expr_len(start_pos);
@@ -331,11 +367,13 @@ impl Parser {
     // This function set self.cur_token_param_start_pos, and add up self.pos
     // Before call this function, make sure that self.cur_inst_len=0 and that tokens[self.pos] matches the beginning of the phrase
     // When it satisfies, tokens[self.pos + self.cur_inst_len] essentially points to the beginning of the *tXX or *eXX
+    // Wildcard:
+    // *tXX: any token, *eXX: any expression (length > 0), **eXX: any expression (length >= 0. If length = 0, the beginning must be ";" or ")")
     fn phrase_compare<const N: usize>(&mut self, phr: [&'static str; N]) -> bool {
         let inst_start_pos = self.pos;
         //println!("phr: {:?}", phr);
         for i in 0..N {
-            //println!("compare {:?} with {:?}", self.lexer.tokens[self.pos].string, phr[i]);
+            println!("compare {:?} with {:?}", self.lexer.tokens[self.pos].string, phr[i]);
             if phr[i].starts_with("*t") {
                 let n = phr[i][2..].parse::<usize>().unwrap();
                 // TODO: this clone can be replaced something like Option::take?
@@ -345,6 +383,14 @@ impl Parser {
                 self.cur_expr_param_start_pos[n] = self.pos;
                 let expr_len = self.expr_len(self.pos);
                 self.pos += expr_len;
+                continue;
+            } else if phr[i].starts_with("**e") {
+                let n = phr[i][3..].parse::<usize>().unwrap();
+                self.cur_expr_param_start_pos[n] = self.pos;
+                if !self.lexer.tokens[self.pos].matches(";") && !self.lexer.tokens[self.pos].matches(")") {    
+                    let expr_len = self.expr_len(self.pos);
+                    self.pos += expr_len;
+                }
                 continue;
             } else if !self.lexer.tokens[self.pos].matches(phr[i]) {
                 // unwind
@@ -359,7 +405,7 @@ impl Parser {
     fn compile(&mut self, var: &mut VariableMap) {
         while self.pos < self.lexer.tokens.len() - 3 {
             println!(
-                "instruction starts with tokens[{}]={:?}",
+                "Statement starts with tokens[{}]={:?}",
                 self.pos, self.lexer.tokens[self.pos]
             );
             // (simple) assignment
@@ -413,7 +459,7 @@ impl Parser {
                 self.push_internal_code(Operation::IfGoto(expr0, label));
             }
             // Parsing "if" statement
-            // if (e0) {
+            // if (*e0) {
             //     A     
             // }
             // ↓
@@ -435,31 +481,92 @@ impl Parser {
             // L1:
             else if self.phrase_compare(["if", "(", "*e0", ")", "{"])
             {
-                let else_label = self.make_temp_label();
-                self.control_frow_labels.push(else_label.clone()); // push L0
+                let label0 = self.make_temp_label();
+                self.blocks.push(Block::IfElse(label0.clone(), None)); // push L0
+
                 let expr0 = self.get_expr_param(0);
                 let not_expr0 = self.make_temp_var();
                 self.push_internal_code(Operation::Eq(not_expr0.clone(), expr0, Token::new(String::from("0"))));
-                self.push_internal_code(Operation::IfGoto(not_expr0, else_label.clone())); // if (!e0) goto L0;
+                self.push_internal_code(Operation::IfGoto(not_expr0, label0.clone())); // if (!e0) goto L0;
             }
             else if self.phrase_compare(["}", "else", "{"])
             {
-                let else_label = self.control_frow_labels.pop().unwrap_or_else(|| panic!("Unmatched braces")); // L0 ← pop
-                let endif_label = self.make_temp_label();
-                self.control_frow_labels.push(endif_label.clone());
-                self.push_internal_code(Operation::Goto(endif_label)); // push L1
-                var.set(&else_label, self.internal_code.len() as i32); // L0:
+                let block = self.blocks.pop().unwrap_or_else(|| panic!("Unmatced braces"));
+                let label0 = match block {
+                    Block::IfElse(ref label0, None) => label0,
+                    _ => panic!("Unmatched else") 
+                };
+                let label1 = self.make_temp_label();
+                self.blocks.push(Block::IfElse(label0.clone(), Some(label1.clone())));
+
+                self.push_internal_code(Operation::Goto(label1)); // Goto(L1)
+                var.set(label0, self.internal_code.len() as i32); // L0:
                 
+            }
+            // Parsing for statement
+            // for (**e0; **e1; **e2) {
+            //     A
+            // }
+            // ↓
+            // evaluate e0 (output if e0 exists)
+            // IfGoto(!e1, L0) (output if e1 exists)
+            // L1:
+            // A
+            // L2:
+            // evaluate e2 (output if e2 exists)
+            // IfGoto(e1, L1) (Goto(L1) is output if e1 dosen't exist)
+            // L0:
+            else if self.phrase_compare(["for", "(", "**e0", ";", "**e1", ";", "**e2", ")", "{"])
+            {
+                let label0 = self.make_temp_label();
+                let label1 = self.make_temp_label();
+                let label2 = self.make_temp_label();
+                self.blocks.push(Block::For(label0.clone(), label1.clone(), label2, self.cur_expr_param_start_pos[1], self.cur_expr_param_start_pos[2]));
+
+                self.get_expr_opt_param(0); // evaluate e0
+                let opt_expr1 = self.get_expr_opt_param(1);
+                if let Some(expr1) = opt_expr1 {
+                    let not_expr1 = self.make_temp_var();
+                    self.push_internal_code(Operation::Eq(not_expr1.clone(), expr1, Token::new(String::from("0"))));
+                    self.push_internal_code(Operation::IfGoto(not_expr1, label0.clone())); // if (!e0) goto L0;
+                }
+                var.set(&label1, self.internal_code.len() as i32); // L1:
             }
             else if self.phrase_compare(["}"])
             {
-                let label = self.control_frow_labels.pop().unwrap_or_else(|| panic!("Unmatched }}"));
-                var.set(&label, self.internal_code.len() as i32); // L1: or L0:
+                let block = self.blocks.pop().unwrap_or_else(|| panic!("Unmatced braces"));
+                match block {
+                    Block::IfElse(ref label0, None) => {
+                        var.set(label0, self.internal_code.len() as i32); // L0:
+                    }
+                    Block::IfElse(_, Some(ref label1)) => {
+                        var.set(label1, self.internal_code.len() as i32); // L1:
+                    }
+                    Block::For(ref label0, label1, ref label2, e1_start_pos, e2_start_pos) => {
+                        var.set(label2, self.internal_code.len() as i32); // L2:
+                        self.evaluate_opt_expr(e2_start_pos);
+                        let opt_expr1 = self.evaluate_opt_expr(e1_start_pos);
+                        // if e1 (conditions) exists, emits IfGoto otherwise emits Goto
+                        match opt_expr1 {
+                            Some(expr1) => {
+                                self.push_internal_code(Operation::IfGoto(expr1, label1));
+                            } 
+                            _ => {
+                                self.push_internal_code(Operation::Goto(label1));
+                            }
+                        }
+                        var.set(label0, self.internal_code.len() as i32); // L0:
+                    }
+                }
             }
             // time
             else if self.phrase_compare(["time", ";"]) {
                 self.push_internal_code(Operation::Time);
-            } else if self.lexer.tokens[self.pos].matches(";") {
+            }
+            else if self.phrase_compare(["*e0", ";"]) {
+                self.get_expr_param(0);
+            }
+            else if self.lexer.tokens[self.pos].matches(";") {
                 continue;
             }
             // syntax error
