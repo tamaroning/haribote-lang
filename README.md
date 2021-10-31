@@ -1,9 +1,36 @@
 # Haribote-lang
-はりぼて言語をRustで実装する
+Implementation of haribote-lang with Rust.  
+haribote-lang is simple and fast.  
+This repository is for my learning interpreters.  
 
-# Benchmark
-| step | processor time |
+# Build
+```sh
+git clone https://github.com/tamaroning/haribote-lang.git
+cd haribote-lang
+cargo build --release
+```
+
+# Run
+To run a .hrb file:
+``` sh
+./target/release/hrb <filepath>
+```
+
+To run with interactive mode:
+``` sh
+./target/release/hrb
+```
+
+# Features
+You can see the commit log to follow the steps of implementation.  
+
+| Step | features |
 | ---- | ---- |
-|  #5  |  470 |
-|  #6  |  213 |
-|  #7  |  213 |
+| 1 | A very simple language |
+| 2 | Multi-character variable name. Skips spaces. |
+| 3 | Conditional branch. Run loops. |
+| 4 | REPL (interactive mode). |
+| 5 | Speed up the program. |
+| 6 | Speed up the program. |
+| 7 | Expression. |
+| 8 | if-else & for statement.|
