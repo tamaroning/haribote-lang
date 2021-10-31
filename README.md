@@ -1,6 +1,5 @@
 # Haribote-lang
-Implementation of haribote-lang with Rust.  
-haribote-lang is simple and fast.  
+haribote-lang is simple and fast programming language.  
 This repository is for my learning interpreters.  
 
 # Build
@@ -26,11 +25,12 @@ You can see the commit log to follow the steps of implementation.
 
 | Step | features |
 | ---- | ---- |
-| 1 | A very simple language |
+| 1 | A very simple language. |
 | 2 | Multi-character variable name. Skips spaces. |
 | 3 | Conditional branch. Run loops. |
 | 4 | REPL (interactive mode). |
 | 5 | Speed up the program. |
 | 6 | Speed up the program. |
 | 7 | Expression. |
-| 8 | if-else & for statement.|
+| 8 | if-else & for statement. Optimize goto. |
+| 9 | Array (declaration, assignment, random access). |

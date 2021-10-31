@@ -123,17 +123,23 @@ enum Operation {
     Print(Token),
     Time,
     Goto(Token),
-    IfGoto(Token, Token), // cond, label
+    IfGoto(Token, Token),          // cond, label
+    ArrayNew(Token, Token),        // name, size
+    ArraySet(Token, Token, Token), // name, index, val
+    ArrayGet(Token, Token, Token), // dist, name, index
 }
 
+#[derive(Debug)]
 struct VariableMap {
     map: HashMap<String, i32>,
+    array_map: HashMap<String, Vec<i32>>,
 }
 
 impl VariableMap {
     fn new() -> Self {
         VariableMap {
             map: HashMap::new(),
+            array_map: HashMap::new(),
         }
     }
 
@@ -161,6 +167,45 @@ impl VariableMap {
     // TODO: to_string() is a bottleneck
     fn set(&mut self, tok: &Token, val: i32) {
         self.map.insert(tok.string.to_string(), val);
+    }
+
+    // TODO: initialize with specified value
+    fn array_init(&mut self, ident: &Token, size: usize) {
+        self.array_map.remove(&ident.string);
+        self.array_map.insert(ident.string.clone(), vec![0; size]);
+    }
+
+    fn array_get(&mut self, ident: &Token, index: usize) -> i32 {
+        let arr = self
+            .array_map
+            .get(&ident.string)
+            .unwrap_or_else(|| panic!("Undeclared array: {}", ident.string));
+        if index >= arr.len() {
+            panic!(
+                "Index out of bounds: the len of {} is {} but the index is {}",
+                ident.string,
+                arr.len(),
+                index
+            );
+        }
+        return arr[index];
+    }
+
+    fn array_set(&mut self, ident: &Token, index: usize, val: i32) {
+        let mut arr = self
+            .array_map
+            .remove(&ident.string)
+            .unwrap_or_else(|| panic!("Undeclared array: {}", ident.string));
+        if index >= arr.len() {
+            panic!(
+                "Index out of bounds: the len of {} is {} but the index is {}",
+                ident.string,
+                arr.len(),
+                index
+            );
+        }
+        arr[index] = val;
+        self.array_map.insert(ident.string.to_string(), arr);
     }
 }
 
@@ -257,9 +302,22 @@ impl Parser {
             return ret;
         }
         // ident | num
-        let ret = self.lexer.tokens[self.expr_pos].clone();
+        let ident = self.lexer.tokens[self.expr_pos].clone();
         self.expr_pos += 1;
-        ret
+
+        // ident[ expr ]
+        if self.lexer.tokens[self.expr_pos].matches("[") {
+            self.expr_pos += 1; // "["
+            let index = self.expr();
+            if !self.lexer.tokens[self.expr_pos].matches("]") {
+                panic!("Unmatched parentheses");
+            }
+            self.expr_pos += 1; // "]"
+            let ret = self.make_temp_var();
+            self.push_internal_code(Operation::ArrayGet(ret.clone(), ident, index));
+            return ret;
+        }
+        ident
     }
 
     fn unary(&mut self) -> Token {
@@ -288,6 +346,7 @@ impl Parser {
         Operation::Ne
     );
 
+    // TODO: assign to array
     fn assign(&mut self) -> Token {
         let equality = self.equality();
         if self.lexer.tokens[self.expr_pos].matches("=") {
@@ -343,7 +402,7 @@ impl Parser {
                 start_pos += inside_len;
                 len += inside_len;
                 if !self.lexer.tokens[start_pos].matches(")") {
-                    panic!("Missing closing parentheses");
+                    panic!("Missing closing parentheses \")\"");
                 }
                 //start_pos += 1;
                 len += 1;
@@ -353,6 +412,20 @@ impl Parser {
                 //numerical literals or variables
                 start_pos += 1;
                 len += 1;
+
+                if self.lexer.tokens[start_pos].matches("[") {
+                    start_pos += 1;
+                    len += 1;
+                    let inside_len = self.expr_len(start_pos);
+                    start_pos += inside_len;
+                    len += inside_len;
+                    if !self.lexer.tokens[start_pos].matches("]") {
+                        panic!("Missing closing parentheses \"]\"");
+                    }
+                    start_pos += 1;
+                    len += 1;
+                }
+
                 while start_pos < self.lexer.tokens.len() {
                     if let "+" | "-" | "*" | "/" | "==" | "!=" | "<" | "<=" | "=" =
                         self.lexer.tokens[start_pos].string.as_str()
@@ -556,7 +629,7 @@ impl Parser {
                 let block = self
                     .blocks
                     .pop()
-                    .unwrap_or_else(|| panic!("Unmatced braces"));
+                    .unwrap_or_else(|| panic!("Unmatched braces"));
                 match block {
                     Block::IfElse(ref label0, None) => {
                         var.set(label0, self.internal_code.len() as i32); // L0:
@@ -584,6 +657,22 @@ impl Parser {
             // time
             else if self.phrase_compare(["time", ";"]) {
                 self.push_internal_code(Operation::Time);
+            } else if self.phrase_compare(["let", "*t0", "[", "*e0", "]", ";"]) {
+                let param0 = self.cur_token_param[0].take().unwrap();
+                let expr0 = self.get_expr_param(0);
+                self.push_internal_code(Operation::ArrayNew(param0, expr0));
+            }
+            // assign to array elements (evaluate_expr support array with read-only)
+            else if self.phrase_compare(["*t0", "[", "*e0", "]", "=", "*e1", ";"]) {
+                let param0 = self.cur_token_param[0].take().unwrap();
+                // Don't reset temp_var_cnt, or it may be the case that _tmp0 is used by e0 and _tmp0 is used by e1.
+                self.temp_var_cnt = 0;
+                self.expr_pos = self.cur_expr_param_start_pos[0];
+                let expr0 = self.expr();
+                self.expr_pos = self.cur_expr_param_start_pos[1];
+                let expr1 = self.expr();
+                
+                self.push_internal_code(Operation::ArraySet(param0, expr0, expr1));
             } else if self.phrase_compare(["*e0", ";"]) {
                 self.get_expr_param(0);
             } else if self.lexer.tokens[self.pos].matches(";") {
@@ -623,13 +712,16 @@ impl Parser {
             _ => return label,
         }
     }
-    
+
     fn optimize_goto(&mut self, var_map: &mut VariableMap) {
         for i in 0..self.internal_code.len() {
             if let Operation::Goto(ref label) = self.internal_code[i] {
                 let final_dist = self.get_dist(var_map, label);
                 if final_dist != label {
-                    println!("Optimize: Goto {} → Goto {}", label.string, final_dist.string);
+                    println!(
+                        "Optimize: Goto {} → Goto {}",
+                        label.string, final_dist.string
+                    );
                     self.internal_code[i] = Operation::Goto(final_dist.clone());
                 }
             }
@@ -641,7 +733,7 @@ impl Parser {
         // collect labels reference of which exists
         for ic in &self.internal_code {
             match ic {
-                &Operation::Goto(ref label) | &Operation::IfGoto(_, ref label)=> {
+                &Operation::Goto(ref label) | &Operation::IfGoto(_, ref label) => {
                     let label_pos = var_map.get(label);
                     let opt_labels = label_map.remove(&label_pos);
                     match opt_labels {
@@ -671,7 +763,7 @@ impl Parser {
             }
         }
         println!("-----------------------------------------------------");
-    } 
+    }
 
     fn exec(&self, var_map: &mut VariableMap) {
         let t0 = unsafe { ffi::clock() };
@@ -743,7 +835,22 @@ impl Parser {
                 }
                 Operation::Time => unsafe {
                     println!("time: {}", ffi::clock() - t0);
-                },
+                }
+                Operation::ArrayNew(ref ident, ref size_tok) => {
+                    let size = var_map.get(size_tok) as usize;
+                    var_map.array_init(ident, size);
+                }
+                Operation::ArrayGet(ref dist, ref ident, ref index_tok) => {
+                    let index = var_map.get(index_tok) as usize;
+                    let val = var_map.array_get(ident, index);
+                    var_map.set(dist, val);
+                }
+                Operation::ArraySet(ref ident, ref index_tok, ref val_tok) => {
+                    let index = var_map.get(index_tok) as usize;
+                    let val = var_map.get(val_tok);
+                    var_map.array_set(ident, index, val);
+                }
+                _ => unimplemented!(),
             }
             pc += 1;
         }
@@ -753,7 +860,7 @@ impl Parser {
 fn run(s: String, var_map: &mut VariableMap) {
     let mut parser = Parser::new(s);
     parser.compile(var_map);
-    parser.dump_internal_code(var_map);
+    //parser.dump_internal_code(var_map);
     parser.optimize_goto(var_map);
     parser.dump_internal_code(var_map);
     parser.exec(var_map);
@@ -886,5 +993,14 @@ mod test {
         run(src, &mut var);
         let sum = var.get(&Token::new(String::from("sum")));
         assert_eq!(sum, 55);
+    }
+
+    #[test]
+    fn test_array() {
+        let src = String::from("let a[3]; a[1] = 1; a[2] = 2;");
+        let mut var = VariableMap::new();
+        run(src, &mut var);
+        let a = var.array_map.remove(&String::from("a")).unwrap();
+        assert_eq!(a, vec![0, 1, 2]);
     }
 }
