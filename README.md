@@ -34,3 +34,6 @@ You can see the commit log to follow the steps of implementation.
 | 7 | Expression. |
 | 8 | if-else & for statement. Optimize goto. |
 | 9 | Array (declaration, assignment, random access). |
+
+# Reference
+- http://essen.osask.jp/?a21_txt01
