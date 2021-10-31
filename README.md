@@ -1,5 +1,5 @@
 # Haribote-lang
-haribote-lang is simple and fast programming language.  
+haribote-lang is simple and fast programming language originally made by Mr.Kawai.  
 This repository is for my learning interpreters.  
 
 # Build
