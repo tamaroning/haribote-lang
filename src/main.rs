@@ -112,7 +112,7 @@ impl Lexer {
 
 #[derive(Debug)]
 enum Operation {
-    Copy(Token, Token), // to, from
+    Copy(Token, Token),       // to, from
     Add(Token, Token, Token), // dist, lhs, rhs
     Sub(Token, Token, Token),
     Mul(Token, Token, Token),
@@ -167,8 +167,8 @@ impl VariableMap {
 
 #[derive(PartialEq, Eq)]
 enum Block {
-    IfElse(Token, Option<Token>), // L0, L1
-    For(Token, Token, Token, usize, usize) // L0, L1, L2, e1_start, e2_start
+    IfElse(Token, Option<Token>),           // L0, L1
+    For(Token, Token, Token, usize, usize), // L0, L1, L2, e1_start, e2_start
 }
 
 // TODO: this is dirty. Is it better to make an expression parser?
@@ -280,7 +280,14 @@ impl Parser {
     parse_binary_op!(mul, unary, "*", Operation::Mul, "/", Operation::Div);
     parse_binary_op!(add, mul, "+", Operation::Add, "-", Operation::Sub);
     parse_binary_op!(relational, add, "<", Operation::Lt, "<=", Operation::Le);
-    parse_binary_op!(equality, relational, "==", Operation::Eq, "!=", Operation::Ne);
+    parse_binary_op!(
+        equality,
+        relational,
+        "==",
+        Operation::Eq,
+        "!=",
+        Operation::Ne
+    );
 
     fn assign(&mut self) -> Token {
         let equality = self.equality();
@@ -348,7 +355,9 @@ impl Parser {
                 start_pos += 1;
                 len += 1;
                 while start_pos < self.lexer.tokens.len() {
-                    if let "+" | "-" | "*" | "/" | "==" | "!=" | "<" | "<=" | "=" = self.lexer.tokens[start_pos].string.as_str() {
+                    if let "+" | "-" | "*" | "/" | "==" | "!=" | "<" | "<=" | "=" =
+                        self.lexer.tokens[start_pos].string.as_str()
+                    {
                         start_pos += 1;
                         len += 1;
                         let rhs_len = self.expr_len(start_pos);
@@ -360,7 +369,6 @@ impl Parser {
                 }
                 return len;
             }
-            
         }
     }
 
@@ -373,7 +381,7 @@ impl Parser {
         let inst_start_pos = self.pos;
         //println!("phr: {:?}", phr);
         for i in 0..N {
-            println!("compare {:?} with {:?}", self.lexer.tokens[self.pos].string, phr[i]);
+            //println!("compare {:?} with {:?}", self.lexer.tokens[self.pos].string, phr[i]);
             if phr[i].starts_with("*t") {
                 let n = phr[i][2..].parse::<usize>().unwrap();
                 // TODO: this clone can be replaced something like Option::take?
@@ -387,7 +395,9 @@ impl Parser {
             } else if phr[i].starts_with("**e") {
                 let n = phr[i][3..].parse::<usize>().unwrap();
                 self.cur_expr_param_start_pos[n] = self.pos;
-                if !self.lexer.tokens[self.pos].matches(";") && !self.lexer.tokens[self.pos].matches(")") {    
+                if !self.lexer.tokens[self.pos].matches(";")
+                    && !self.lexer.tokens[self.pos].matches(")")
+                {
                     let expr_len = self.expr_len(self.pos);
                     self.pos += expr_len;
                 }
@@ -452,15 +462,14 @@ impl Parser {
                 self.push_internal_code(Operation::Goto(param0));
             }
             // if ( e0 ) goto label;
-            else if self.phrase_compare(["if", "(", "*e0", ")", "goto", "*t0", ";"])
-            {
+            else if self.phrase_compare(["if", "(", "*e0", ")", "goto", "*t0", ";"]) {
                 let label = self.cur_token_param[0].take().unwrap();
                 let expr0 = self.get_expr_param(0);
                 self.push_internal_code(Operation::IfGoto(expr0, label));
             }
             // Parsing "if" statement
             // if (*e0) {
-            //     A     
+            //     A
             // }
             // ↓
             // IfGoto(!e0, L0)
@@ -479,29 +488,34 @@ impl Parser {
             // L0:
             // B
             // L1:
-            else if self.phrase_compare(["if", "(", "*e0", ")", "{"])
-            {
+            else if self.phrase_compare(["if", "(", "*e0", ")", "{"]) {
                 let label0 = self.make_temp_label();
                 self.blocks.push(Block::IfElse(label0.clone(), None)); // push L0
 
                 let expr0 = self.get_expr_param(0);
                 let not_expr0 = self.make_temp_var();
-                self.push_internal_code(Operation::Eq(not_expr0.clone(), expr0, Token::new(String::from("0"))));
-                self.push_internal_code(Operation::IfGoto(not_expr0, label0.clone())); // if (!e0) goto L0;
-            }
-            else if self.phrase_compare(["}", "else", "{"])
-            {
-                let block = self.blocks.pop().unwrap_or_else(|| panic!("Unmatced braces"));
+                self.push_internal_code(Operation::Eq(
+                    not_expr0.clone(),
+                    expr0,
+                    Token::new(String::from("0")),
+                ));
+                self.push_internal_code(Operation::IfGoto(not_expr0, label0.clone()));
+            // if (!e0) goto L0;
+            } else if self.phrase_compare(["}", "else", "{"]) {
+                let block = self
+                    .blocks
+                    .pop()
+                    .unwrap_or_else(|| panic!("Unmatced braces"));
                 let label0 = match block {
                     Block::IfElse(ref label0, None) => label0,
-                    _ => panic!("Unmatched else") 
+                    _ => panic!("Unmatched else"),
                 };
                 let label1 = self.make_temp_label();
-                self.blocks.push(Block::IfElse(label0.clone(), Some(label1.clone())));
+                self.blocks
+                    .push(Block::IfElse(label0.clone(), Some(label1.clone())));
 
                 self.push_internal_code(Operation::Goto(label1)); // Goto(L1)
                 var.set(label0, self.internal_code.len() as i32); // L0:
-                
             }
             // Parsing for statement
             // for (**e0; **e1; **e2) {
@@ -521,20 +535,32 @@ impl Parser {
                 let label0 = self.make_temp_label();
                 let label1 = self.make_temp_label();
                 let label2 = self.make_temp_label();
-                self.blocks.push(Block::For(label0.clone(), label1.clone(), label2, self.cur_expr_param_start_pos[1], self.cur_expr_param_start_pos[2]));
+                self.blocks.push(Block::For(
+                    label0.clone(),
+                    label1.clone(),
+                    label2,
+                    self.cur_expr_param_start_pos[1],
+                    self.cur_expr_param_start_pos[2],
+                ));
 
                 self.get_expr_opt_param(0); // evaluate e0
                 let opt_expr1 = self.get_expr_opt_param(1);
                 if let Some(expr1) = opt_expr1 {
                     let not_expr1 = self.make_temp_var();
-                    self.push_internal_code(Operation::Eq(not_expr1.clone(), expr1, Token::new(String::from("0"))));
-                    self.push_internal_code(Operation::IfGoto(not_expr1, label0.clone())); // if (!e0) goto L0;
+                    self.push_internal_code(Operation::Eq(
+                        not_expr1.clone(),
+                        expr1,
+                        Token::new(String::from("0")),
+                    ));
+                    self.push_internal_code(Operation::IfGoto(not_expr1, label0.clone()));
+                    // if (!e0) goto L0;
                 }
                 var.set(&label1, self.internal_code.len() as i32); // L1:
-            }
-            else if self.phrase_compare(["}"])
-            {
-                let block = self.blocks.pop().unwrap_or_else(|| panic!("Unmatced braces"));
+            } else if self.phrase_compare(["}"]) {
+                let block = self
+                    .blocks
+                    .pop()
+                    .unwrap_or_else(|| panic!("Unmatced braces"));
                 match block {
                     Block::IfElse(ref label0, None) => {
                         var.set(label0, self.internal_code.len() as i32); // L0:
@@ -550,7 +576,7 @@ impl Parser {
                         match opt_expr1 {
                             Some(expr1) => {
                                 self.push_internal_code(Operation::IfGoto(expr1, label1));
-                            } 
+                            }
                             _ => {
                                 self.push_internal_code(Operation::Goto(label1));
                             }
@@ -562,11 +588,9 @@ impl Parser {
             // time
             else if self.phrase_compare(["time", ";"]) {
                 self.push_internal_code(Operation::Time);
-            }
-            else if self.phrase_compare(["*e0", ";"]) {
+            } else if self.phrase_compare(["*e0", ";"]) {
                 self.get_expr_param(0);
-            }
-            else if self.lexer.tokens[self.pos].matches(";") {
+            } else if self.lexer.tokens[self.pos].matches(";") {
                 continue;
             }
             // syntax error
@@ -620,22 +644,22 @@ impl Parser {
                 Operation::Eq(ref dist, ref lhs, ref rhs) => {
                     let lhs_val = var_map.get(lhs);
                     let rhs_val = var_map.get(rhs);
-                    var_map.set(dist, if lhs_val == rhs_val {1} else {0});
+                    var_map.set(dist, if lhs_val == rhs_val { 1 } else { 0 });
                 }
                 Operation::Ne(ref dist, ref lhs, ref rhs) => {
                     let lhs_val = var_map.get(lhs);
                     let rhs_val = var_map.get(rhs);
-                    var_map.set(dist, if lhs_val != rhs_val {1} else {0});
+                    var_map.set(dist, if lhs_val != rhs_val { 1 } else { 0 });
                 }
                 Operation::Lt(ref dist, ref lhs, ref rhs) => {
                     let lhs_val = var_map.get(lhs);
                     let rhs_val = var_map.get(rhs);
-                    var_map.set(dist, if lhs_val < rhs_val {1} else {0});
+                    var_map.set(dist, if lhs_val < rhs_val { 1 } else { 0 });
                 }
                 Operation::Le(ref dist, ref lhs, ref rhs) => {
                     let lhs_val = var_map.get(lhs);
                     let rhs_val = var_map.get(rhs);
-                    var_map.set(dist, if lhs_val <= rhs_val {1} else {0});
+                    var_map.set(dist, if lhs_val <= rhs_val { 1 } else { 0 });
                 }
                 Operation::Print(ref var) => {
                     let val = var_map.get(var);
@@ -731,7 +755,13 @@ mod test {
         for tok in lexer.tokens {
             tok_strs.push(tok.string);
         }
-        assert_eq!(tok_strs, vec!["v200", "=", "200", ";", "if", "(", "v200", "/", "4", "==", "900", ")", "goto" , "end", ";", ".", ".", "."]);
+        assert_eq!(
+            tok_strs,
+            vec![
+                "v200", "=", "200", ";", "if", "(", "v200", "/", "4", "==", "900", ")", "goto",
+                "end", ";", ".", ".", "."
+            ]
+        );
     }
 
     #[test]
@@ -741,5 +771,52 @@ mod test {
         run(src, &mut var);
         let result = var.get(&Token::new(String::from("result")));
         assert_eq!(result, 250);
+    }
+
+    #[test]
+    fn test_expr() {
+        let src = String::from("a = 10; result = tmp = a * 2; ");
+        let mut var = VariableMap::new();
+        run(src, &mut var);
+        let result = var.get(&Token::new(String::from("result")));
+        assert_eq!(result, 20);
+    }
+
+    #[test]
+    fn test_int_var() {
+        let src = String::from("result = 1; result = result + result * 2; result = result + 4;");
+        let mut var = VariableMap::new();
+        run(src, &mut var);
+        let result = var.get(&Token::new(String::from("result")));
+        assert_eq!(result, 7);
+    }
+
+    #[test]
+    fn test_goto() {
+        let src = String::from("result = 1; goto A; B: result = result + 4; goto C; A: result = result + 2; goto B; C:");
+        let mut var = VariableMap::new();
+        run(src, &mut var);
+        let result = var.get(&Token::new(String::from("result")));
+        assert_eq!(result, 7);
+    }
+
+    #[test]
+    fn test_if() {
+        let src = String::from(
+            "a = 2; if (a <= 2) { if (a == 1) {} else { result = 10; } } else { a = 0; }",
+        );
+        let mut var = VariableMap::new();
+        run(src, &mut var);
+        let result = var.get(&Token::new(String::from("result")));
+        assert_eq!(result, 10);
+    }
+
+    #[test]
+    fn test_for() {
+        let src = String::from("sum = 0; i = 0; for (;i <= 10; i = i + 1) { sum = sum + i; }");
+        let mut var = VariableMap::new();
+        run(src, &mut var);
+        let sum = var.get(&Token::new(String::from("sum")));
+        assert_eq!(sum, 55);
     }
 }
