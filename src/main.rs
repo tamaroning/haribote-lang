@@ -1,10 +1,9 @@
 extern crate libc;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs::File;
 use std::io;
 use std::io::prelude::*;
-use std::ptr::eq;
 use std::str;
 
 mod ffi {
@@ -13,7 +12,7 @@ mod ffi {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct Token {
     string: String,
 }
@@ -346,7 +345,7 @@ impl Parser {
                 if !self.lexer.tokens[start_pos].matches(")") {
                     panic!("Missing closing parentheses");
                 }
-                start_pos += 1;
+                //start_pos += 1;
                 len += 1;
                 return len;
             }
@@ -602,8 +601,43 @@ impl Parser {
         }
     }
 
+    // Return the final destination of label
+    // Ex:
+    // A:
+    //     Goto(B)
+    // B:
+    //     Goto(C)
+    // C:
+    // In this case, get_dist(A) returns C.
+    fn get_dist<'a>(&'a self, var_map: &mut VariableMap, label: &'a Token) -> &'a Token {
+        let label_line = var_map.get(&label) as usize;
+        if label_line >= self.internal_code.len() {
+            return label;
+        }
+        let first_op = &self.internal_code[label_line];
+        match first_op {
+            &Operation::Goto(ref to) => {
+                let rec = self.get_dist(var_map, to);
+                return rec;
+            }
+            _ => return label,
+        }
+    }
+    
+    fn optimize_goto(&mut self, var_map: &mut VariableMap) {
+        for i in 0..self.internal_code.len() {
+            if let Operation::Goto(ref label) = self.internal_code[i] {
+                let final_dist = self.get_dist(var_map, label);
+                if final_dist != label {
+                    println!("Optimize: Goto {} → Goto {}", label.string, final_dist.string);
+                    self.internal_code[i] = Operation::Goto(final_dist.clone());
+                }
+            }
+        }
+    }
+
     fn dump_internal_code(&self, var_map: &mut VariableMap) {
-        let mut label_map: HashMap<i32, Vec<Token>> = HashMap::new();
+        let mut label_map: HashMap<i32, HashSet<Token>> = HashMap::new();
         // collect labels reference of which exists
         for ic in &self.internal_code {
             match ic {
@@ -612,11 +646,13 @@ impl Parser {
                     let opt_labels = label_map.remove(&label_pos);
                     match opt_labels {
                         Some(mut labels) => {
-                            labels.push(label.clone());
+                            labels.insert(label.clone());
                             label_map.insert(label_pos, labels);
                         }
                         None => {
-                            label_map.insert(label_pos, vec![label.clone()]);
+                            let mut hash_set = HashSet::new();
+                            hash_set.insert(label.clone());
+                            label_map.insert(label_pos, hash_set);
                         }
                     }
                 }
@@ -717,6 +753,8 @@ impl Parser {
 fn run(s: String, var_map: &mut VariableMap) {
     let mut parser = Parser::new(s);
     parser.compile(var_map);
+    parser.dump_internal_code(var_map);
+    parser.optimize_goto(var_map);
     parser.dump_internal_code(var_map);
     parser.exec(var_map);
 }
