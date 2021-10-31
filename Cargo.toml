@@ -8,3 +8,7 @@ author = "tamaron"
 
 [dependencies]
 libc = "0.2"
+
+[[bin]]
+name = "hrb"
+path = "src/main.rs"
