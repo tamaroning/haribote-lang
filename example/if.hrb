@@ -1,0 +1,15 @@
+i = 4;
+if (i < 3) {
+    if (i == 1) {
+        print 1;
+    } else {
+        print 2;
+    }
+} else {
+    if (i < 4) {
+        print 3;
+        goto A;
+    }
+    print 4;
+}
+A:
