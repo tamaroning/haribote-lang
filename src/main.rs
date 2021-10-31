@@ -179,6 +179,9 @@ struct Parser {
     // the number of variables which is used
     // to store temporay results of culculation
     temp_var_cnt: usize,
+    temp_label_cnt: usize,
+    // the temporary labels emitted when parsing closing block "}"
+    control_frow_labels: Vec<Token>,
 }
 
 macro_rules! parse_binary_op {
@@ -221,12 +224,19 @@ impl Parser {
             cur_expr_param_start_pos: [0; 4],
             expr_pos: 0,
             temp_var_cnt: 0,
+            temp_label_cnt: 0,
+            control_frow_labels: Vec::new(),
         }
     }
 
     fn make_temp_var(&mut self) -> Token {
         let ret = Token::new(String::from(format!("_tmp{}", self.temp_var_cnt)));
         self.temp_var_cnt += 1;
+        ret
+    }
+    fn make_temp_label(&mut self) -> Token {
+        let ret = Token::new(String::from(format!("_tmpLabel{}", self.temp_label_cnt)));
+        self.temp_label_cnt += 1;
         ret
     }
 
@@ -401,6 +411,50 @@ impl Parser {
                 let label = self.cur_token_param[0].take().unwrap();
                 let expr0 = self.get_expr_param(0);
                 self.push_internal_code(Operation::IfGoto(expr0, label));
+            }
+            // Parsing "if" statement
+            // if (e0) {
+            //     A     
+            // }
+            // ↓
+            // IfGoto(!e0, L0)
+            // A
+            // L0:
+            //
+            // if (e0) {
+            //     A
+            // } else {
+            //     B
+            // }
+            // ↓
+            // IfGoto(!e0, L0)
+            // A
+            // Goto(L1)
+            // L0:
+            // B
+            // L1:
+            else if self.phrase_compare(["if", "(", "*e0", ")", "{"])
+            {
+                let else_label = self.make_temp_label();
+                self.control_frow_labels.push(else_label.clone()); // push L0
+                let expr0 = self.get_expr_param(0);
+                let not_expr0 = self.make_temp_var();
+                self.push_internal_code(Operation::Eq(not_expr0.clone(), expr0, Token::new(String::from("0"))));
+                self.push_internal_code(Operation::IfGoto(not_expr0, else_label.clone())); // if (!e0) goto L0;
+            }
+            else if self.phrase_compare(["}", "else", "{"])
+            {
+                let else_label = self.control_frow_labels.pop().unwrap_or_else(|| panic!("Unmatched braces")); // L0 ← pop
+                let endif_label = self.make_temp_label();
+                self.control_frow_labels.push(endif_label.clone());
+                self.push_internal_code(Operation::Goto(endif_label)); // push L1
+                var.set(&else_label, self.internal_code.len() as i32); // L0:
+                
+            }
+            else if self.phrase_compare(["}"])
+            {
+                let label = self.control_frow_labels.pop().unwrap_or_else(|| panic!("Unmatched }}"));
+                var.set(&label, self.internal_code.len() as i32); // L1: or L0:
             }
             // time
             else if self.phrase_compare(["time", ";"]) {
