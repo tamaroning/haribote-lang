@@ -22,6 +22,7 @@ To run with interactive mode:
 
 # Features
 You can see the commit log to follow the steps of implementation.  
+The steps from 1 to 8 matches to those of [the original version](http://essen.osask.jp/?a21_txt01).  
 
 | Step | features |
 | ---- | ---- |
@@ -34,6 +35,7 @@ You can see the commit log to follow the steps of implementation.
 | 7 | Expression. |
 | 8 | if-else & for statement. Optimize goto. |
 | 9 | Array (declaration, assignment, random access). |
+| 10 | Constant Folding & Constant Propagation. |
 
 # Reference
 - http://essen.osask.jp/?a21_txt01
