@@ -8,7 +8,7 @@ This repository is derived from the original version.
 - Input source code is converted into internal code
 - and optimized in the following ways :
     - Constant Folding & Constant Propagation
-    - Remove unecessary jumps 
+    - Jump Chain Optimization
 
 # Build
 haribote-lang run on Windows, OSX, and Linux.  
@@ -20,12 +20,12 @@ cargo build --release
 ```
 
 # Run
-To run a .hrb file:
+Run a .hrb file:
 ``` sh
 ./target/release/hrb <filepath>
 ```
 
-To run with interactive mode:
+Run in an interactive mode:
 ``` sh
 ./target/release/hrb
 ```
@@ -106,7 +106,7 @@ primary     ::= <Num> | <Ident> ( "[" expr "]" )?
 
 ```
 
-# Commit Log
+# Commit Logs
 You can see the commit log to follow the steps of implementation.  
 The steps from 1 to 8 are the same as those of [the original version](http://essen.osask.jp/?a21_txt01).  
 
@@ -123,5 +123,5 @@ The steps from 1 to 8 are the same as those of [the original version](http://ess
 | 9 | Array (declaration, assignment, random access). |
 | 10 | Constant Folding & Constant Propagation. |
 
-# Reference
+# References
 - http://essen.osask.jp/?a21_txt01
