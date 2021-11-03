@@ -84,6 +84,29 @@ impl Lexer {
                 self.pos += 1;
                 continue;
             }
+            
+            // string literals
+            if self.next_char() == '"' {
+                self.pos += 1;
+
+                let mut dq_found = false;
+                while self.pos < self.txt.len() {
+                    if self.next_char() == '"' {
+                        dq_found = true;
+                        self.pos += 1;
+                        break;
+                    }
+                    self.pos += 1;
+                }
+                if !dq_found {
+                    panic!("Lexer error: Unmatched '\"'");
+                }
+                let mut s = self.txt[start_pos + 1..self.pos - 1].to_string();
+                s = s.replace("\\n", "\n");
+                self.tokens.push(Token::new(s));
+                continue;
+            }
+
             if is_one_char_symbol(self.next_char()) {
                 self.pos += 1;
             } else if self.next_char().is_alphanumeric() {
@@ -121,13 +144,13 @@ enum Operation {
     Lt(Token, Token, Token),
     Le(Token, Token, Token),
     Print(Token),
+    PrintS(Token),
     Time,
     Goto(Token),
     IfGoto(Token, Token),          // cond, label
     ArrayNew(Token, Token),        // name, size
     ArraySet(Token, Token, Token), // name, index, val
     ArrayGet(Token, Token, Token), // dist, name, index
-    Nop,
 }
 
 #[derive(Debug)]
@@ -517,8 +540,12 @@ impl Parser {
             // print
             else if self.phrase_compare(["print", "*e0", ";"]) {
                 let expr0 = self.get_expr_param(0);
-                let expr_param0 = Operation::Print(expr0);
-                self.push_internal_code(expr_param0);
+                self.
+                push_internal_code(Operation::Print(expr0));
+            }
+            else if self.phrase_compare(["prints", "*t0", ";"]) {
+                let s = self.cur_token_param[0].take().unwrap();
+                self.push_internal_code(Operation::PrintS(s));
             }
             // label
             else if self.phrase_compare(["*t0", ":"]) {
@@ -784,6 +811,10 @@ impl Parser {
                     let val = var_map.get(var);
                     println!("{}", val);
                 }
+                Operation::PrintS(ref tok) => {
+                    print!("{}", tok.string);
+                    io::stdout().flush().unwrap();
+                }
                 Operation::Goto(ref label) => {
                     pc = var_map.get(label) as usize;
                     continue;
@@ -812,7 +843,6 @@ impl Parser {
                     let val = var_map.get(val_tok);
                     var_map.array_set(ident, index, val);
                 }
-                _ => unimplemented!(),
             }
             pc += 1;
         }
