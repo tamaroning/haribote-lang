@@ -3,8 +3,8 @@ haribote-lang is a simple and fast programming language originally made by Mr.Ka
 This repository is derived from the original version.  
 
 ## Features
-- This repository is an interpreter
-- which run in two modes, normal mode and interactive mode (also called REPL)
+- This repository contains hrb, haribote-lang interpreter
+- hrb runs in two modes, normal mode and interactive mode (a.k.a. REPL)
 - Input source code is converted into internal code
 - and optimized in the following ways :
     - Constant Folding & Constant Propagation
