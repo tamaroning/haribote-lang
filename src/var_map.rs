@@ -3,7 +3,11 @@ use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct VariableMap {
+    // integer variables.
+    // Also used for branch labels.
+    // map["label"] represents the number of the line immidiately following label:
     pub map: HashMap<String, i32>,
+    // integer arrays
     array_map: HashMap<String, Vec<i32>>,
 }
 
