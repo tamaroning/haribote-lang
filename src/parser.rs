@@ -191,7 +191,9 @@ impl Parser {
         if self.lexer.tokens[start_pos].matches(";") {
             return None;
         }
-        self.temp_var_cnt = 0;
+        // Easily analyze programs by using each temporary variable once
+        // Do not modify below:
+        // self.temp_var_cnt = 0;
         self.expr_pos = start_pos;
         Some(self.expr())
     }
