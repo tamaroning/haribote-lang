@@ -1,5 +1,6 @@
 use std::io::{self, Write};
 
+use crate::lexer::TokenType;
 use crate::parser::{Operation, Parser};
 use crate::var_map::VariableMap;
 
@@ -64,13 +65,30 @@ impl Parser {
                     let rhs_val = var_map.get(rhs);
                     var_map.set(dist, if lhs_val <= rhs_val { 1 } else { 0 });
                 }
-                Operation::Print(ref var) => {
-                    let val = var_map.get(var);
-                    println!("{}", val);
-                }
-                Operation::PrintS(ref tok) => {
-                    print!("{}", tok.string);
+                Operation::Print(ref val_tok) => {
+                    match &val_tok.ty {
+                        TokenType::Ident | TokenType::NumLiteral => {
+                            let val = var_map.get(val_tok);
+                            print!("{}", val);
+                        }
+                        TokenType::StrLiteral => {
+                            print!("{}", val_tok.string);
+                        }
+                        _ => panic!("Cannot print {}", val_tok.string)
+                    }
                     io::stdout().flush().unwrap();
+                }
+                Operation::Println(ref val_tok) => {
+                    match &val_tok.ty {
+                        TokenType::Ident | TokenType::NumLiteral => {
+                            let val = var_map.get(val_tok);
+                            println!("{}", val);
+                        }
+                        TokenType::StrLiteral => {
+                            println!("{}", val_tok.string);
+                        }
+                        _ => panic!("Cannot print {}", val_tok.string)
+                    }
                 }
                 Operation::Goto(ref label) => {
                     pc = var_map.get(label) as usize;

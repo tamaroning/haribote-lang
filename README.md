@@ -82,8 +82,8 @@ stmt        :: = array-decl
                | for
                | goto-stmt
                | expr? ";"
-               | "print" expr ";"
-               | "prints" <Str> ";"
+               | "print" (expr | <Str>) ";"
+               | "println" (expr | <Str>) ";"
 
 array-decl  ::= "let" <Ident> "[" expr "]" ";"
 

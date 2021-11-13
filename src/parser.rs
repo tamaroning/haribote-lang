@@ -15,7 +15,7 @@ pub enum Operation {
     Lt(Token, Token, Token),
     Le(Token, Token, Token),
     Print(Token),
-    PrintS(Token),
+    Println(Token),
     Time,
     Goto(Token),
     IfGoto(Token, Token),          // cond, label
@@ -100,8 +100,8 @@ fn dump_operation(op: &Operation) {
         Operation::Print(ref var) => {
             println!("print {}", lexer::dump_token(var));
         }
-        Operation::PrintS(ref tok) => {
-            println!("prints {}", lexer::dump_token(tok));
+        Operation::Println(ref var) => {
+            println!("println {}", lexer::dump_token(var));
         }
         Operation::Goto(ref label) => {
             println!("goto {}", lexer::dump_token(label));
@@ -462,9 +462,13 @@ impl Parser {
             else if self.phrase_compare(["print", "*e0", ";"]) {
                 let expr0 = self.get_expr_param(0);
                 self.push_internal_code(Operation::Print(expr0));
-            } else if self.phrase_compare(["prints", "*t0", ";"]) {
-                let s = self.cur_token_param[0].take().unwrap();
-                self.push_internal_code(Operation::PrintS(s));
+            }
+            // println
+            else if self.phrase_compare(["println", "*e0", ";"]) {
+                // TODO: Is it valid that e0 is a string literal?
+                // It works because the length of *e0 is at least one.
+                let expr0 = self.get_expr_param(0);
+                self.push_internal_code(Operation::Println(expr0));
             }
             // label
             else if self.phrase_compare(["*t0", ":"]) {
