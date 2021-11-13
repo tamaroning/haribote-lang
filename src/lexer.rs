@@ -153,20 +153,25 @@ impl Lexer {
     }
 }
 
-#[test]
-fn test_lexer() {
-    let src = String::from("v200 = 200; if(v200 / 4 == 900) goto end;");
-    let mut lexer = Lexer::new(src);
-    lexer.lex();
-    let mut tok_strs = Vec::new();
-    for tok in lexer.tokens {
-        tok_strs.push(tok.string);
+#[cfg(test)]
+mod lexer_tests {
+    use super::*;
+
+    #[test]
+    fn test_lexer() {
+        let src = String::from("v200 = 200; if(v200 / 4 == 900) goto end;");
+        let mut lexer = Lexer::new(src);
+        lexer.lex();
+        let mut tok_strs = Vec::new();
+        for tok in lexer.tokens {
+            tok_strs.push(tok.string);
+        }
+        assert_eq!(
+            tok_strs,
+            vec![
+                "v200", "=", "200", ";", "if", "(", "v200", "/", "4", "==", "900", ")", "goto",
+                "end", ";", ".", ".", "."
+            ]
+        );
     }
-    assert_eq!(
-        tok_strs,
-        vec![
-            "v200", "=", "200", ";", "if", "(", "v200", "/", "4", "==", "900", ")", "goto", "end",
-            ";", ".", ".", "."
-        ]
-    );
 }
