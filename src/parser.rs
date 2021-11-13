@@ -23,6 +23,62 @@ pub enum Operation {
     ArrayGet(Token, Token, Token), // dist, name, index
 }
 
+fn dump_operation(op: &Operation) {
+    match op {
+        Operation::Copy(ref dist, ref operand) => {
+            println!("copy {}, {}", dist.string, operand.string);
+        }
+        Operation::Add(ref dist, ref lhs, ref rhs) => {
+           println!("add {}, {}, {}", dist.string, lhs.string, rhs.string); 
+        }
+        Operation::Sub(ref dist, ref lhs, ref rhs) => {
+            println!("sub {}, {}, {}", dist.string, lhs.string, rhs.string); 
+        }
+        Operation::Mul(ref dist, ref lhs, ref rhs) => {
+            println!("mul {}, {}, {}", dist.string, lhs.string, rhs.string); 
+        }
+        Operation::Div(ref dist, ref lhs, ref rhs) => {
+            println!("div {}, {}, {}", dist.string, lhs.string, rhs.string); 
+        }
+        Operation::Eq(ref dist, ref lhs, ref rhs) => {
+            println!("eq {}, {}, {}", dist.string, lhs.string, rhs.string); 
+        }
+        Operation::Ne(ref dist, ref lhs, ref rhs) => {
+            println!("ne {}, {}, {}", dist.string, lhs.string, rhs.string); 
+        }
+        Operation::Lt(ref dist, ref lhs, ref rhs) => {
+            println!("lt {}, {}, {}", dist.string, lhs.string, rhs.string); 
+        }
+        Operation::Le(ref dist, ref lhs, ref rhs) => {
+            println!("le {}, {}, {}", dist.string, lhs.string, rhs.string); 
+        }
+        Operation::Print(ref var) => {
+            println!("print {}", var.string);
+        }
+        Operation::PrintS(ref tok) => {
+            println!("prints {}", tok.string);
+        }
+        Operation::Goto(ref label) => {
+            println!("goto {}", label.string);
+        }
+        Operation::IfGoto(ref cond, ref label) => {
+            println!("ifGoto {}", label.string);
+        }
+        Operation::Time => {
+            println!("time");
+        },
+        Operation::ArrayNew(ref ident, ref size_tok) => {
+            println!("arrayNew {}, {}", ident.string, size_tok.string);
+        }
+        Operation::ArrayGet(ref dist, ref ident, ref index_tok) => {
+            println!("arrayGetElem {}, {}, {}", dist.string, ident.string, index_tok.string);
+        }
+        Operation::ArraySet(ref ident, ref index_tok, ref val_tok) => {
+            println!("arraySet {}, {}, {}", ident.string, index_tok.string, val_tok.string);
+        }
+    }
+}
+
 #[derive(PartialEq, Eq)]
 enum Block {
     IfElse(Token, Option<Token>),           // L0, L1
@@ -94,12 +150,18 @@ impl Parser {
     }
 
     fn make_temp_var(&mut self) -> Token {
-        let ret = Token::new(String::from(format!("_tmp{}", self.temp_var_cnt)), crate::lexer::TokenType::Ident);
+        let ret = Token::new(
+            String::from(format!("_tmp{}", self.temp_var_cnt)),
+            crate::lexer::TokenType::Ident,
+        );
         self.temp_var_cnt += 1;
         ret
     }
     fn make_temp_label(&mut self) -> Token {
-        let ret = Token::new(String::from(format!("_tmpLabel{}", self.temp_label_cnt)), TokenType::Ident);
+        let ret = Token::new(
+            String::from(format!("_tmpLabel{}", self.temp_label_cnt)),
+            TokenType::Ident,
+        );
         self.temp_label_cnt += 1;
         ret
     }
@@ -138,7 +200,11 @@ impl Parser {
         if self.lexer.tokens[self.expr_pos].matches("-") {
             self.expr_pos += 1;
             let tmp = self.make_temp_var();
-            let op = Operation::Sub(tmp.clone(), Token::new(String::from("0"), TokenType::NumLiteral), self.primary());
+            let op = Operation::Sub(
+                tmp.clone(),
+                Token::new(String::from("0"), TokenType::NumLiteral),
+                self.primary(),
+            );
             self.push_internal_code(op);
             return tmp;
         } else if self.lexer.tokens[self.expr_pos].matches("+") {
@@ -535,7 +601,8 @@ impl Parser {
                 println!("{}:", label.string);
             }
             if i != self.internal_code.len() {
-                println!("    {:?}", self.internal_code[i]);
+                print!("\t");
+                dump_operation(&self.internal_code[i])
             }
         }
         println!("-----------------------------------------------------");
