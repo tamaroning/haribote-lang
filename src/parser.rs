@@ -1,4 +1,4 @@
-use crate::lexer::{Lexer, Token};
+use crate::lexer::{Lexer, Token, TokenType};
 use crate::var_map::VariableMap;
 use std::collections::HashSet;
 
@@ -94,12 +94,12 @@ impl Parser {
     }
 
     fn make_temp_var(&mut self) -> Token {
-        let ret = Token::new(String::from(format!("_tmp{}", self.temp_var_cnt)));
+        let ret = Token::new(String::from(format!("_tmp{}", self.temp_var_cnt)), crate::lexer::TokenType::Ident);
         self.temp_var_cnt += 1;
         ret
     }
     fn make_temp_label(&mut self) -> Token {
-        let ret = Token::new(String::from(format!("_tmpLabel{}", self.temp_label_cnt)));
+        let ret = Token::new(String::from(format!("_tmpLabel{}", self.temp_label_cnt)), TokenType::Ident);
         self.temp_label_cnt += 1;
         ret
     }
@@ -138,7 +138,7 @@ impl Parser {
         if self.lexer.tokens[self.expr_pos].matches("-") {
             self.expr_pos += 1;
             let tmp = self.make_temp_var();
-            let op = Operation::Sub(tmp.clone(), Token::new(String::from("0")), self.primary());
+            let op = Operation::Sub(tmp.clone(), Token::new(String::from("0"), TokenType::NumLiteral), self.primary());
             self.push_internal_code(op);
             return tmp;
         } else if self.lexer.tokens[self.expr_pos].matches("+") {
@@ -384,7 +384,7 @@ impl Parser {
                 self.push_internal_code(Operation::Eq(
                     not_expr0.clone(),
                     expr0,
-                    Token::new(String::from("0")),
+                    Token::new(String::from("0"), TokenType::NumLiteral),
                 ));
                 self.push_internal_code(Operation::IfGoto(not_expr0, label0.clone()));
             // if (!e0) goto L0;
@@ -437,7 +437,7 @@ impl Parser {
                     self.push_internal_code(Operation::Eq(
                         not_expr1.clone(),
                         expr1,
-                        Token::new(String::from("0")),
+                        Token::new(String::from("0"), TokenType::NumLiteral),
                     ));
                     self.push_internal_code(Operation::IfGoto(not_expr1, label0.clone()));
                     // if (!e0) goto L0;
@@ -514,7 +514,7 @@ impl Parser {
         // show the all labels
         for s in var_map.map.keys() {
             let line = var_map.map.get(s).unwrap();
-            label_map[*line as usize].insert(Token::new(s.clone()));
+            label_map[*line as usize].insert(Token::new(s.clone(), TokenType::Ident));
         }
 
         /*

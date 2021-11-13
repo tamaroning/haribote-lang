@@ -3,6 +3,8 @@ mod experimental;
 mod lexer;
 mod parser;
 mod var_map;
+mod analyze;
+mod optimize;
 
 extern crate libc;
 use parser::Parser;
@@ -85,7 +87,7 @@ mod test {
         let src = String::from("result = 100 + 200 - 50;");
         let mut var = VariableMap::new();
         run(src, &mut var);
-        let result = var.get(&Token::new(String::from("result")));
+        let result = var.get(&Token::new(String::from("result"), lexer::TokenType::Ident));
         assert_eq!(result, 250);
     }
 
@@ -94,7 +96,7 @@ mod test {
         let src = String::from("a = 10; result = tmp = a * 2; ");
         let mut var = VariableMap::new();
         run(src, &mut var);
-        let result = var.get(&Token::new(String::from("result")));
+        let result = var.get(&Token::new(String::from("result"), lexer::TokenType::Ident));
         assert_eq!(result, 20);
     }
 
@@ -103,7 +105,7 @@ mod test {
         let src = String::from("result = 1; result = result + result * 2; result = result + 4;");
         let mut var = VariableMap::new();
         run(src, &mut var);
-        let result = var.get(&Token::new(String::from("result")));
+        let result = var.get(&Token::new(String::from("result"), lexer::TokenType::Ident));
         assert_eq!(result, 7);
     }
 
@@ -112,7 +114,7 @@ mod test {
         let src = String::from("result = 1; goto A; B: result = result + 4; goto C; A: result = result + 2; goto B; C:");
         let mut var = VariableMap::new();
         run(src, &mut var);
-        let result = var.get(&Token::new(String::from("result")));
+        let result = var.get(&Token::new(String::from("result"), lexer::TokenType::Ident));
         assert_eq!(result, 7);
     }
 
@@ -123,7 +125,7 @@ mod test {
         );
         let mut var = VariableMap::new();
         run(src, &mut var);
-        let result = var.get(&Token::new(String::from("result")));
+        let result = var.get(&Token::new(String::from("result"), lexer::TokenType::Ident));
         assert_eq!(result, 10);
     }
 
@@ -132,7 +134,7 @@ mod test {
         let src = String::from("sum = 0; i = 0; for (;i <= 10; i = i + 1) { sum = sum + i; }");
         let mut var = VariableMap::new();
         run(src, &mut var);
-        let sum = var.get(&Token::new(String::from("sum")));
+        let sum = var.get(&Token::new(String::from("sum"), lexer::TokenType::Ident));
         assert_eq!(sum, 55);
     }
 
@@ -142,9 +144,9 @@ mod test {
         let mut var = VariableMap::new();
         run(src, &mut var);
         let a = [
-            var.array_get(&Token::new("a".to_string()), 0),
-            var.array_get(&Token::new("a".to_string()), 1),
-            var.array_get(&Token::new("a".to_string()), 2),
+            var.array_get(&Token::new("a".to_string(), lexer::TokenType::Ident), 0),
+            var.array_get(&Token::new("a".to_string(), lexer::TokenType::Ident), 1),
+            var.array_get(&Token::new("a".to_string(), lexer::TokenType::Ident), 2),
         ];
         assert_eq!(a, [0, 1, 2]);
     }

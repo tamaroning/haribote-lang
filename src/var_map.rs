@@ -1,4 +1,4 @@
-use crate::lexer::Token;
+use crate::lexer::{Token, TokenType};
 use std::collections::HashMap;
 
 #[derive(Debug)]
@@ -88,7 +88,7 @@ impl VariableMap {
 #[test]
 fn test_numerical_literals() {
     let mut var = VariableMap::new();
-    assert_eq!(var.get(&Token::new(String::from("100"))), 100);
-    assert_eq!(var.get(&Token::new(String::from("+0"))), 0);
-    assert_eq!(var.get(&Token::new(String::from("-30"))), -30);
+    assert_eq!(var.get(&Token::new(String::from("100"), TokenType::NumLiteral)), 100);
+    assert_eq!(var.get(&Token::new(String::from("+0"), TokenType::NumLiteral)), 0);
+    assert_eq!(var.get(&Token::new(String::from("-30"), TokenType::NumLiteral)), -30);
 }

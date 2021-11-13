@@ -1,11 +1,23 @@
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Token {
     pub string: String,
+    pub ty: TokenType,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum TokenType {
+    Simbol,
+    Ident,
+    NumLiteral,
+    StrLiteral,
 }
 
 impl Token {
-    pub fn new(s: String) -> Self {
-        Token { string: s }
+    pub fn new(s: String, ty: TokenType) -> Self {
+        Token {
+            string: s,
+            ty: ty,
+        }
     }
 
     pub fn matches(&self, s: &str) -> bool {
@@ -58,6 +70,8 @@ impl Lexer {
     pub fn lex(&mut self) {
         while self.pos < self.txt.len() {
             let start_pos = self.pos;
+
+            // skip whitespace
             if is_whitespace(self.next_char()) {
                 self.pos += 1;
                 continue;
@@ -67,6 +81,7 @@ impl Lexer {
             if self.next_char() == '"' {
                 self.pos += 1;
 
+                // whether double quotation is found
                 let mut dq_found = false;
                 while self.pos < self.txt.len() {
                     if self.next_char() == '"' {
@@ -81,32 +96,44 @@ impl Lexer {
                 }
                 let mut s = self.txt[start_pos + 1..self.pos - 1].to_string();
                 s = s.replace("\\n", "\n");
-                self.tokens.push(Token::new(s));
+                self.tokens.push(Token::new(s, TokenType::StrLiteral));
                 continue;
             }
 
+            let tok_ty;
             if is_one_char_symbol(self.next_char()) {
                 self.pos += 1;
-            } else if self.next_char().is_alphanumeric() {
+                tok_ty = TokenType::Simbol
+            } else if self.next_char().is_numeric() {
+                // TODO: check if the token is a numerical litaral
+                self.pos += 1;
+                while self.pos < self.txt.len() && self.next_char().is_numeric() {
+                    self.pos += 1;
+                }
+                tok_ty = TokenType::NumLiteral;
+            } 
+            else if self.next_char().is_alphabetic() {
                 self.pos += 1;
                 while self.pos < self.txt.len() && self.next_char().is_alphanumeric() {
                     self.pos += 1;
                 }
+                tok_ty = TokenType::Ident;
             } else if is_normal_symbol(self.next_char()) {
                 self.pos += 1;
                 while self.pos < self.txt.len() && is_normal_symbol(self.next_char()) {
                     self.pos += 1;
                 }
+                tok_ty = TokenType::Simbol
             } else {
                 println!("Syntax error : '{}'", self.next_char());
                 std::process::exit(0);
             }
             let s = self.txt[start_pos..self.pos].to_string();
-            self.tokens.push(Token::new(s));
+            self.tokens.push(Token::new(s, tok_ty));
         }
-        self.tokens.push(Token::new(String::from(".")));
-        self.tokens.push(Token::new(String::from(".")));
-        self.tokens.push(Token::new(String::from(".")));
+        self.tokens.push(Token::new(String::from("."), TokenType::Simbol));
+        self.tokens.push(Token::new(String::from("."), TokenType::StrLiteral));
+        self.tokens.push(Token::new(String::from("."), TokenType::StrLiteral));
     }
 }
 
