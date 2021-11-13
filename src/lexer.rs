@@ -12,12 +12,26 @@ pub enum TokenType {
     StrLiteral,
 }
 
+pub fn dump_token(tok: &Token) -> String {
+    match &tok.ty {
+        &TokenType::Simbol => {
+            format!("{}(Simbol)", tok.string)
+        }
+        &TokenType::Ident => {
+            format!("{}(Ident)", tok.string)
+        }
+        &TokenType::NumLiteral => {
+            format!("{}(Num)", tok.string)
+        }
+        &TokenType::StrLiteral => {
+            format!("\"{}\"(Str)", tok.string)
+        }
+    }
+}
+
 impl Token {
     pub fn new(s: String, ty: TokenType) -> Self {
-        Token {
-            string: s,
-            ty: ty,
-        }
+        Token { string: s, ty: ty }
     }
 
     pub fn matches(&self, s: &str) -> bool {
@@ -111,8 +125,7 @@ impl Lexer {
                     self.pos += 1;
                 }
                 tok_ty = TokenType::NumLiteral;
-            } 
-            else if self.next_char().is_alphabetic() {
+            } else if self.next_char().is_alphabetic() {
                 self.pos += 1;
                 while self.pos < self.txt.len() && self.next_char().is_alphanumeric() {
                     self.pos += 1;
@@ -131,9 +144,12 @@ impl Lexer {
             let s = self.txt[start_pos..self.pos].to_string();
             self.tokens.push(Token::new(s, tok_ty));
         }
-        self.tokens.push(Token::new(String::from("."), TokenType::Simbol));
-        self.tokens.push(Token::new(String::from("."), TokenType::StrLiteral));
-        self.tokens.push(Token::new(String::from("."), TokenType::StrLiteral));
+        self.tokens
+            .push(Token::new(String::from("."), TokenType::Simbol));
+        self.tokens
+            .push(Token::new(String::from("."), TokenType::StrLiteral));
+        self.tokens
+            .push(Token::new(String::from("."), TokenType::StrLiteral));
     }
 }
 

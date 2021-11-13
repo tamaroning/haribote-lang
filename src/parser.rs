@@ -1,3 +1,4 @@
+use crate::lexer;
 use crate::lexer::{Lexer, Token, TokenType};
 use crate::var_map::VariableMap;
 use std::collections::HashSet;
@@ -26,55 +27,117 @@ pub enum Operation {
 fn dump_operation(op: &Operation) {
     match op {
         Operation::Copy(ref dist, ref operand) => {
-            println!("copy {}, {}", dist.string, operand.string);
+            println!(
+                "copy {}, {}",
+                lexer::dump_token(dist),
+                lexer::dump_token(operand)
+            );
         }
         Operation::Add(ref dist, ref lhs, ref rhs) => {
-           println!("add {}, {}, {}", dist.string, lhs.string, rhs.string); 
+            println!(
+                "add {}, {}, {}",
+                lexer::dump_token(dist),
+                lexer::dump_token(lhs),
+                lexer::dump_token(rhs)
+            );
         }
         Operation::Sub(ref dist, ref lhs, ref rhs) => {
-            println!("sub {}, {}, {}", dist.string, lhs.string, rhs.string); 
+            println!(
+                "sub {}, {}, {}",
+                lexer::dump_token(dist),
+                lexer::dump_token(lhs),
+                lexer::dump_token(rhs)
+            );
         }
         Operation::Mul(ref dist, ref lhs, ref rhs) => {
-            println!("mul {}, {}, {}", dist.string, lhs.string, rhs.string); 
+            println!(
+                "mul {}, {}, {}",
+                lexer::dump_token(dist),
+                lexer::dump_token(lhs),
+                lexer::dump_token(rhs)
+            );
         }
         Operation::Div(ref dist, ref lhs, ref rhs) => {
-            println!("div {}, {}, {}", dist.string, lhs.string, rhs.string); 
+            println!(
+                "div {}, {}, {}",
+                lexer::dump_token(dist),
+                lexer::dump_token(lhs),
+                lexer::dump_token(rhs)
+            );
         }
         Operation::Eq(ref dist, ref lhs, ref rhs) => {
-            println!("eq {}, {}, {}", dist.string, lhs.string, rhs.string); 
+            println!(
+                "eq {}, {}, {}",
+                lexer::dump_token(dist),
+                lexer::dump_token(lhs),
+                lexer::dump_token(rhs)
+            );
         }
         Operation::Ne(ref dist, ref lhs, ref rhs) => {
-            println!("ne {}, {}, {}", dist.string, lhs.string, rhs.string); 
+            println!(
+                "ne {}, {}, {}",
+                lexer::dump_token(dist),
+                lexer::dump_token(lhs),
+                lexer::dump_token(rhs)
+            );
         }
         Operation::Lt(ref dist, ref lhs, ref rhs) => {
-            println!("lt {}, {}, {}", dist.string, lhs.string, rhs.string); 
+            println!(
+                "lt {}, {}, {}",
+                lexer::dump_token(dist),
+                lexer::dump_token(lhs),
+                lexer::dump_token(rhs)
+            );
         }
         Operation::Le(ref dist, ref lhs, ref rhs) => {
-            println!("le {}, {}, {}", dist.string, lhs.string, rhs.string); 
+            println!(
+                "le {}, {}, {}",
+                lexer::dump_token(dist),
+                lexer::dump_token(lhs),
+                lexer::dump_token(rhs)
+            );
         }
         Operation::Print(ref var) => {
-            println!("print {}", var.string);
+            println!("print {}", lexer::dump_token(var));
         }
         Operation::PrintS(ref tok) => {
-            println!("prints {}", tok.string);
+            println!("prints {}", lexer::dump_token(tok));
         }
         Operation::Goto(ref label) => {
-            println!("goto {}", label.string);
+            println!("goto {}", lexer::dump_token(label));
         }
         Operation::IfGoto(ref cond, ref label) => {
-            println!("ifGoto {}", label.string);
+            println!(
+                "ifGoto {}, {}",
+                lexer::dump_token(cond),
+                lexer::dump_token(label)
+            );
         }
         Operation::Time => {
             println!("time");
-        },
+        }
         Operation::ArrayNew(ref ident, ref size_tok) => {
-            println!("arrayNew {}, {}", ident.string, size_tok.string);
+            println!(
+                "arrayNew {}, {}",
+                lexer::dump_token(ident),
+                lexer::dump_token(size_tok)
+            );
         }
         Operation::ArrayGet(ref dist, ref ident, ref index_tok) => {
-            println!("arrayGetElem {}, {}, {}", dist.string, ident.string, index_tok.string);
+            println!(
+                "arrayGetElem {}, {}, {}",
+                lexer::dump_token(dist),
+                lexer::dump_token(ident),
+                lexer::dump_token(index_tok)
+            );
         }
         Operation::ArraySet(ref ident, ref index_tok, ref val_tok) => {
-            println!("arraySet {}, {}, {}", ident.string, index_tok.string, val_tok.string);
+            println!(
+                "arraySet {}, {}, {}",
+                lexer::dump_token(ident),
+                lexer::dump_token(index_tok),
+                lexer::dump_token(val_tok)
+            );
         }
     }
 }
