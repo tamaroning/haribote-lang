@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use crate::lexer::Token;
+use crate::lexer::{Token, TokenType};
 use crate::parser::{Operation, Parser};
 use crate::var_map::VariableMap;
 
@@ -175,13 +175,16 @@ impl Parser {
                 | Operation::Div(dist, _, _) => {
                     if is_const(&mut consts, dist) {
                         let val_string = get_const(&mut consts, dist).to_string();
-                        ics[i] = Operation::Copy(dist.clone(), Token::new(val_string));
+                        ics[i] = Operation::Copy(
+                            dist.clone(),
+                            Token::new(val_string, TokenType::NumLiteral),
+                        );
                     }
                 }
                 Operation::Print(val) => {
                     if is_const(&mut consts, val) {
                         let val_string = get_const(&mut consts, val).to_string();
-                        ics[i] = Operation::Print(Token::new(val_string));
+                        ics[i] = Operation::Print(Token::new(val_string, TokenType::NumLiteral));
                     }
                 }
                 Operation::Goto(_) | Operation::IfGoto(..) => {
