@@ -1,10 +1,10 @@
+mod analyze;
 mod exec;
 mod experimental;
 mod lexer;
+mod optimize;
 mod parser;
 mod var_map;
-mod analyze;
-mod optimize;
 
 extern crate libc;
 use parser::Parser;
@@ -15,14 +15,15 @@ use std::io::prelude::*;
 use std::str;
 use var_map::VariableMap;
 
-fn run(s: String, var_map: &mut VariableMap) {
+pub fn run(s: String, var_map: &mut VariableMap) {
     let mut parser = Parser::new(s);
     parser.compile(var_map);
     parser.dump_internal_code(var_map);
-    println!("Optimizing...");
-    parser.experimental_optimize_goto(var_map);
-    parser.experimental_optimize_constant_folding(var_map);
+    //println!("Optimizing...");
+    //parser.experimental_optimize_goto(var_map);
+    //parser.experimental_optimize_constant_folding(var_map);
     parser.dump_internal_code(var_map);
+    //dbg!(analyze::ic_to_cfg(&parser.internal_code, var_map));
     parser.exec(var_map);
 }
 
@@ -79,8 +80,10 @@ fn main() {
 
 #[cfg(test)]
 mod test {
+    use std::collections::{HashMap, HashSet};
+
     use super::*;
-    use crate::lexer::Token;
+    use crate::{analyze::ic_to_cfg, lexer::Token};
 
     #[test]
     fn test_add() {
@@ -149,5 +152,36 @@ mod test {
             var.array_get(&Token::new("a".to_string(), lexer::TokenType::Ident), 2),
         ];
         assert_eq!(a, [0, 1, 2]);
+    }
+
+    #[test]
+    fn test_build_cfg() {
+        let src = String::from("a = 3; b = a; A: b = 100; goto A;");
+        let mut var_map = VariableMap::new();
+        let mut parser = Parser::new(src);
+        parser.compile(&mut var_map);
+        parser.dump_internal_code(&mut var_map);
+        ic_to_cfg(&parser.internal_code, &mut var_map);
+    }
+
+    #[test]
+    fn test_constant_propagation_on_acyclic_graph() {
+        let src = String::from("a = 1; b = 2; c = 3; c = e;");
+        let mut var_map = VariableMap::new();
+        let mut parser = Parser::new(src);
+        parser.compile(&mut var_map);
+        parser.dump_internal_code(&mut var_map);
+        let cfg = ic_to_cfg(&parser.internal_code, &mut var_map);
+        println!("{:?}", cfg);
+        let const_info = cfg.constant_propagation();
+        let mut c = HashMap::new();
+        c.insert(String::from("a"), 1);
+        assert_eq!(const_info[0].outs, c);
+        c.insert(String::from("b"), 2);
+        assert_eq!(const_info[1].outs, c);
+        c.insert(String::from("c"), 3);
+        assert_eq!(const_info[2].outs, c);
+        c.remove(&String::from("c"));
+        assert_eq!(const_info[3].outs, c);
     }
 }
