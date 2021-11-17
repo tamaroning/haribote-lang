@@ -172,16 +172,33 @@ mod test {
         parser.compile(&mut var_map);
         parser.dump_internal_code(&mut var_map);
         let cfg = ic_to_cfg(&parser.internal_code, &mut var_map);
-        println!("{:?}", cfg);
-        let const_info = cfg.constant_propagation();
+        println!("succs: {:?}", cfg.succs);
+        println!("preds: {:?}", cfg.preds);
+        let const_maps = cfg.constant_propagation();
         let mut c = HashMap::new();
         c.insert(String::from("a"), 1);
-        assert_eq!(const_info[0].outs, c);
+        assert_eq!(const_maps[0].outs, c);
         c.insert(String::from("b"), 2);
-        assert_eq!(const_info[1].outs, c);
+        assert_eq!(const_maps[1].outs, c);
         c.insert(String::from("c"), 3);
-        assert_eq!(const_info[2].outs, c);
+        assert_eq!(const_maps[2].outs, c);
         c.remove(&String::from("c"));
-        assert_eq!(const_info[3].outs, c);
+        assert_eq!(const_maps[3].outs, c);
+    }
+
+    #[test]
+    fn test_constant_propagation_on_cyclic_graph() {
+        let src = String::from("c = 3 + 1; for(i = 0; i < 3; i = i + 1){ a = i; } print \"OK\";");
+        //let src = String::from("a = 100 + 20 * 3 - 4;");
+        let mut var_map = VariableMap::new();
+        let mut parser = Parser::new(src);
+        parser.compile(&mut var_map);
+        parser.dump_internal_code(&mut var_map);
+        let cfg = ic_to_cfg(&parser.internal_code, &mut var_map);
+        println!("succs: {:?}", cfg.succs);
+        println!("preds: {:?}", cfg.preds);
+        let const_maps = cfg.constant_propagation();
+        let mut c = HashMap::new();
+        c.insert(String::from("a"), 1);
     }
 }
