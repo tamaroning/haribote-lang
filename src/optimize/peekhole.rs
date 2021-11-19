@@ -26,49 +26,43 @@ impl Parser {
     // B:
     //     Goto(C)
     // C:
-    // In this case, get_dist(A) returns C.
-    fn get_dist<'a>(&'a self, var_map: &mut VariableMap, label: &'a Token) -> &'a Token {
-        let label_line = var_map.get(&label) as usize;
+    // In this case, get_dist(A, A) returns C.
+    fn get_dist<'a>(
+        &'a self,
+        var_map: &mut VariableMap,
+        from: &'a Token,
+        start: &'a Token,
+    ) -> &'a Token {
+        let label_line = var_map.get(&from) as usize;
         if label_line >= self.internal_code.len() {
-            return label;
+            return from;
         }
         let first_op = &self.internal_code[label_line];
         match first_op {
             &Operation::Goto(ref to) => {
-                // make sure that "A: gotoA;" causes endless recurssion
-                if *to == *label {
-                    return label;
+                // If goto chains loops, return start
+                if *to == *start {
+                    return start;
                 }
-                let rec = self.get_dist(var_map, to);
+                // recurssion
+                let rec = self.get_dist(var_map, to, start);
                 return rec;
             }
-            _ => return label,
+            _ => return from,
         }
     }
 
     pub fn optimize_peekhole(&mut self, var_map: &mut VariableMap) {
         for i in 0..self.internal_code.len() {
             if let Operation::Goto(ref label) = self.internal_code[i] {
-                let final_dist = self.get_dist(var_map, label);
+                let final_dist = self.get_dist(var_map, label, label);
                 if final_dist != label {
-                    /*
-                    println!(
-                        "Optimize: goto {} → goto {}",
-                        label.string, final_dist.string
-                    );
-                    */
                     self.internal_code[i] = Operation::Goto(final_dist.clone());
                 }
             }
             if let Operation::IfGoto(ref cond, ref label) = self.internal_code[i] {
-                let final_dist = self.get_dist(var_map, label);
+                let final_dist = self.get_dist(var_map, label, label);
                 if final_dist != label {
-                    /*
-                    println!(
-                        "Optimize: ifGoto {} → ifGoto {}",
-                        label.string, final_dist.string
-                    );
-                    */
                     self.internal_code[i] = Operation::IfGoto(cond.clone(), final_dist.clone());
                 }
             }
