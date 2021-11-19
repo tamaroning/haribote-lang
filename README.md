@@ -1,4 +1,6 @@
 # haribote-lang
+[![CircleCI](https://circleci.com/gh/tamaroning/haribote-lang/tree/main.svg?style=svg)](https://circleci.com/gh/tamaroning/haribote-lang/tree/main)
+
 haribote-lang is a simple and fast programming language for education originally made by Mr.Kawai.  
 This repository is a remodelled implementation in Rust of the original version, [Creating programming languages in 10 days](http://essen.osask.jp/?a21_txt01).  
 I added the following features to it.  
