@@ -8,7 +8,7 @@ This repository is derived from the original version.
 - Input source code is converted into internal code
 - and optimized in the following ways :
     - Constant Folding & Constant Propagation
-    - Jump Chain Optimization
+    - Peekhole optimization
 
 # Build
 haribote-lang run on Windows, OSX, and Linux.  
@@ -46,18 +46,18 @@ answer is 300
 
 ```
 ?> hrb ./example/fibo.hrb`
-Fibo = 1
-Fibo = 1
-Fibo = 2
-Fibo = 3
-Fibo = 5
-Fibo = 8
-Fibo = 13
-Fibo = 21
-Fibo = 34
-Fibo = 55
-Fibo = 89
-Fibo = 144
+Fibo_0 = 1
+Fibo_1 = 1
+Fibo_2 = 2
+Fibo_3 = 3
+Fibo_4 = 5
+Fibo_5 = 8
+Fibo_6 = 13
+Fibo_7 = 21
+Fibo_8 = 34
+Fibo_9 = 55
+Fibo_10 = 89
+Fibo_11 = 144
 ?>
 ```
 
