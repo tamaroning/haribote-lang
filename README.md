@@ -3,7 +3,6 @@
 
 haribote-lang is a simple and fast programming language for education originally made by Mr.Kawai.  
 This repository is a remodelled implementation in Rust of the original version, [Creating programming languages in 10 days](http://essen.osask.jp/?a21_txt01).  
-I added the following features to it.  
 
 ## Features
 - This repository contains hrb, haribote-lang interpreter
@@ -128,3 +127,4 @@ The steps from 1 to 8 are the same as those of [the original version](http://ess
 
 # References
 - http://essen.osask.jp/?a21_txt01
+- http://pages.cs.wisc.edu/~horwitz/CS704-NOTES/2.DATAFLOW.html
