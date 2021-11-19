@@ -1,4 +1,5 @@
 version: 2.1
+
 jobs:
   build:
     docker:
@@ -6,3 +7,6 @@ jobs:
     steps:
       - checkout
       - run: cargo --version
+      - run:
+          name: test
+          command: "cargo test"
