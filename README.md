@@ -34,11 +34,11 @@ Run in an interactive mode:
 ```
 ?> ./hrb
 haribote-lang interactive mode
-> prints "Hello World\n";  
+> print "Hello World\n";  
 Hello World
 > a = 15; b = 20;       
 > c = a * b;  
-> prints "answer is "; print c;
+> print "answer is "; println c;
 answer is 300
 > exit;
 ?>
