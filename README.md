@@ -1,6 +1,7 @@
 # haribote-lang
-haribote-lang is a simple and fast programming language originally made by Mr.Kawai.  
-This repository is derived from the original version.  
+haribote-lang is a simple and fast programming language for education originally made by Mr.Kawai.  
+This repository is a remodelled implementation in Rust of the original version, [Creating programming languages in 10 days](http://essen.osask.jp/?a21_txt01).  
+I added the following features to it.  
 
 ## Features
 - This repository contains hrb, haribote-lang interpreter
@@ -8,10 +9,10 @@ This repository is derived from the original version.
 - Input source code is converted into internal code
 - and optimized in the following ways :
     - Constant Folding & Constant Propagation
-    - Peekhole optimization
+    - Peekhole Optimization
 
 # Build
-haribote-lang run on Windows, OSX, and Linux.  
+haribote-lang run on Windows, OSX, Linux, UNIX.  
 
 ```sh
 git clone https://github.com/tamaroning/haribote-lang.git
