@@ -1,6 +1,7 @@
-use super::cfg::Cfg;
+use super::cfg::{self, Cfg};
 use crate::lexer::{Token, TokenType};
-use crate::parser::Operation;
+use crate::parser::{Operation, Parser};
+use crate::var_map::VariableMap;
 use std::collections::{HashMap, HashSet};
 
 // constant variable map for one node
@@ -72,7 +73,7 @@ impl Cfg {
             let mut ins = HashMap::new();
             for pred in &self.preds[idx] {
                 for (k, v) in &const_maps[*pred].outs {
-                    println!("{:?} {:?}", k, v);
+                    //println!("{:?} {:?}", k, v);
                     match ins.get(k) {
                         Some(Some(n)) => {
                             // overwrite with None
@@ -91,8 +92,7 @@ impl Cfg {
                     }
                 }
             }
-
-            println!("{}.in {:?}", idx, ins);
+            //println!("{}.in {:?}", idx, ins);
 
             // INs = f(INs)
             match op {
@@ -125,8 +125,8 @@ impl Cfg {
                     if is_constant(&ins, operand1) && is_constant(&ins, operand2) {
                         let ret = match &op {
                             Operation::Add(..) => operand1_val.unwrap() + operand2_val.unwrap(),
-                            Operation::Sub(..) => operand1_val.unwrap() + operand2_val.unwrap(),
-                            Operation::Mul(..) => operand1_val.unwrap() + operand2_val.unwrap(),
+                            Operation::Sub(..) => operand1_val.unwrap() - operand2_val.unwrap(),
+                            Operation::Mul(..) => operand1_val.unwrap() * operand2_val.unwrap(),
                             Operation::Div(..) => {
                                 if operand2_val.unwrap() == 0 {
                                     panic!("Found divisionn by zero");
@@ -170,21 +170,57 @@ impl Cfg {
                 }
                 _ => (),
             }
-
             //println!("{}.out↓{:?}", idx, const_maps[idx].outs);
-            println!("{}.out {:?}", idx, ins);
+            //println!("{}.out {:?}", idx, ins);
 
             // if f(INs) != OUTs then pushes all successors of the node into worklist
             if ins != const_maps[idx].outs {
                 const_maps[idx].outs = ins;
                 for succ in &self.succs[idx] {
-                    println!("insert {}", succ);
+                    //println!("push {}", succ);
                     worklist.insert(*succ);
                 }
             }
         }
-        println!("WL {:?}", worklist);
-        println!("{:?}", const_maps);
+        //println!("WL {:?}", worklist);
+        //println!("{:?}", const_maps);
         const_maps
+    }
+}
+
+impl Parser {
+    pub fn optimize_constant_folding(&mut self, var_map: &mut VariableMap) {
+        let cfg = cfg::ic_to_cfg(&self.internal_code, var_map);
+        let const_maps = cfg.constant_propagation();
+        for i in 0..self.internal_code.len() {
+            match &self.internal_code[i] {
+                Operation::Copy(ref dist, ref operand) => {
+                    if operand.ty == TokenType::Ident {
+                        match const_maps[i].outs.get(&dist.string) {
+                            Some(Some(ref n)) => {
+                                self.internal_code[i] = Operation::Copy(dist.clone(), Token::new(n.to_string(), TokenType::NumLiteral));
+                            }
+                            _ => ()
+                        }
+                    }
+                }
+                Operation::Add(ref dist, ..)
+                | Operation::Sub(ref dist, ..)
+                | Operation::Mul(ref dist, ..)
+                | Operation::Div(ref dist, ..)
+                | Operation::Eq(ref dist, ..)
+                | Operation::Ne(ref dist, ..)
+                | Operation::Lt(ref dist, ..)
+                | Operation::Le(ref dist, ..) => {
+                    match const_maps[i].outs.get(&dist.string) {
+                        Some(Some(ref n)) => {
+                            self.internal_code[i] = Operation::Copy(dist.clone(), Token::new(n.to_string(), TokenType::NumLiteral));
+                        }
+                        _ => ()
+                    }
+                }
+                _ => ()
+            } 
+        }
     }
 }

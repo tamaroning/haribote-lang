@@ -22,7 +22,7 @@ impl Cfg {
 pub fn ic_to_cfg(ops: &Vec<Operation>, var_map: &mut VariableMap) -> Cfg {
     let mut cfg = Cfg::new(ops.clone());
     for i in 0..ops.len() {
-        println!("{} {:?}", i, ops[i]);
+        //println!("{} {:?}", i, ops[i]);
         if let Operation::Goto(ref label) = ops[i] {
             let dist = var_map.get(label) as usize;
             cfg.succs[i].push(dist);

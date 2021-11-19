@@ -1,5 +1,4 @@
 mod exec;
-mod experimental;
 mod lexer;
 mod optimize;
 mod parser;
@@ -18,9 +17,8 @@ pub fn run(s: String, var_map: &mut VariableMap) {
     let mut parser = Parser::new(s);
     parser.compile(var_map);
     parser.dump_internal_code(var_map);
-    //println!("Optimizing...");
-    //parser.experimental_optimize_goto(var_map);
-    //parser.experimental_optimize_constant_folding(var_map);
+    println!("Optimizing...");
+    parser.optimize_constant_folding(var_map);
     parser.dump_internal_code(var_map);
     parser.exec(var_map);
 }
@@ -169,10 +167,10 @@ mod test {
         let mut var_map = VariableMap::new();
         let mut parser = Parser::new(src);
         parser.compile(&mut var_map);
-        parser.dump_internal_code(&mut var_map);
+        //parser.dump_internal_code(&mut var_map);
         let cfg = optimize::cfg::ic_to_cfg(&parser.internal_code, &mut var_map);
-        println!("succs: {:?}", cfg.succs);
-        println!("preds: {:?}", cfg.preds);
+        //println!("succs: {:?}", cfg.succs);
+        //println!("preds: {:?}", cfg.preds);
         let const_maps = cfg.constant_propagation();
         let mut c = HashMap::new();
         c.insert(String::from("a"), Some(1));
@@ -187,16 +185,25 @@ mod test {
 
     #[test]
     fn test_constant_propagation_on_cyclic_graph() {
-        let src = String::from("a = 0 + 4; i = 0; A: i = i +1; goto A;");
+        let src = String::from("a = 0 + 4; i = 0; A: i = i + 1; b = a + 4; goto A;");
         let mut var_map = VariableMap::new();
         let mut parser = Parser::new(src);
         parser.compile(&mut var_map);
-        parser.dump_internal_code(&mut var_map);
+        //parser.dump_internal_code(&mut var_map);
         let cfg = optimize::cfg::ic_to_cfg(&parser.internal_code, &mut var_map);
-        println!("succs: {:?}", cfg.succs);
-        println!("preds: {:?}", cfg.preds);
+        //println!("succs: {:?}", cfg.succs);
+        //println!("preds: {:?}", cfg.preds);
         let const_maps = cfg.constant_propagation();
+        println!("{:?}", const_maps);
         let mut c = HashMap::new();
-        c.insert(String::from("a"), 1);
+        c.insert(String::from("a"), Some(4));
+        assert_eq!(const_maps[0].outs, c);
+        c.insert(String::from("i"), Some(0));
+        assert_eq!(const_maps[1].outs, c);
+        c.insert(String::from("i"), None);
+        c.insert(String::from("b"), Some(8));
+        assert_eq!(const_maps[2].outs, c);
+        assert_eq!(const_maps[3].outs, c);
+        assert_eq!(const_maps[4].outs, c);
     }
 }
