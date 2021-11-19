@@ -1,4 +1,3 @@
-mod analyze;
 mod exec;
 mod experimental;
 mod lexer;
@@ -23,7 +22,6 @@ pub fn run(s: String, var_map: &mut VariableMap) {
     //parser.experimental_optimize_goto(var_map);
     //parser.experimental_optimize_constant_folding(var_map);
     parser.dump_internal_code(var_map);
-    //dbg!(analyze::ic_to_cfg(&parser.internal_code, var_map));
     parser.exec(var_map);
 }
 
@@ -80,10 +78,11 @@ fn main() {
 
 #[cfg(test)]
 mod test {
-    use std::collections::{HashMap, HashSet};
+    use std::collections::HashMap;
 
     use super::*;
-    use crate::{analyze::ic_to_cfg, lexer::Token};
+    use crate::lexer::Token;
+    use crate::optimize;
 
     #[test]
     fn test_add() {
@@ -161,7 +160,7 @@ mod test {
         let mut parser = Parser::new(src);
         parser.compile(&mut var_map);
         parser.dump_internal_code(&mut var_map);
-        ic_to_cfg(&parser.internal_code, &mut var_map);
+        optimize::cfg::ic_to_cfg(&parser.internal_code, &mut var_map);
     }
 
     #[test]
@@ -171,30 +170,29 @@ mod test {
         let mut parser = Parser::new(src);
         parser.compile(&mut var_map);
         parser.dump_internal_code(&mut var_map);
-        let cfg = ic_to_cfg(&parser.internal_code, &mut var_map);
+        let cfg = optimize::cfg::ic_to_cfg(&parser.internal_code, &mut var_map);
         println!("succs: {:?}", cfg.succs);
         println!("preds: {:?}", cfg.preds);
         let const_maps = cfg.constant_propagation();
         let mut c = HashMap::new();
-        c.insert(String::from("a"), 1);
+        c.insert(String::from("a"), Some(1));
         assert_eq!(const_maps[0].outs, c);
-        c.insert(String::from("b"), 2);
+        c.insert(String::from("b"), Some(2));
         assert_eq!(const_maps[1].outs, c);
-        c.insert(String::from("c"), 3);
+        c.insert(String::from("c"), Some(3));
         assert_eq!(const_maps[2].outs, c);
-        c.remove(&String::from("c"));
+        c.insert(String::from("c"), None);
         assert_eq!(const_maps[3].outs, c);
     }
 
     #[test]
     fn test_constant_propagation_on_cyclic_graph() {
-        let src = String::from("c = 3 + 1; for(i = 0; i < 3; i = i + 1){ a = i; } print \"OK\";");
-        //let src = String::from("a = 100 + 20 * 3 - 4;");
+        let src = String::from("a = 0 + 4; i = 0; A: i = i +1; goto A;");
         let mut var_map = VariableMap::new();
         let mut parser = Parser::new(src);
         parser.compile(&mut var_map);
         parser.dump_internal_code(&mut var_map);
-        let cfg = ic_to_cfg(&parser.internal_code, &mut var_map);
+        let cfg = optimize::cfg::ic_to_cfg(&parser.internal_code, &mut var_map);
         println!("succs: {:?}", cfg.succs);
         println!("preds: {:?}", cfg.preds);
         let const_maps = cfg.constant_propagation();
