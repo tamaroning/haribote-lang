@@ -5,6 +5,8 @@ for (i = 0; i < 10; i = i + 1) {
     a[i + 2] = a[i + 1] + a[i];
 }
 for (i = 0; i < 12; i = i + 1) {
-    print "Fibo = ";
+    print "Fibo_";
+    print i;
+    print " = ";
     println a[i];
 }
