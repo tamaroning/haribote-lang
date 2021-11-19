@@ -198,9 +198,12 @@ impl Parser {
                     if operand.ty == TokenType::Ident {
                         match const_maps[i].outs.get(&dist.string) {
                             Some(Some(ref n)) => {
-                                self.internal_code[i] = Operation::Copy(dist.clone(), Token::new(n.to_string(), TokenType::NumLiteral));
+                                self.internal_code[i] = Operation::Copy(
+                                    dist.clone(),
+                                    Token::new(n.to_string(), TokenType::NumLiteral),
+                                );
                             }
-                            _ => ()
+                            _ => (),
                         }
                     }
                 }
@@ -211,16 +214,17 @@ impl Parser {
                 | Operation::Eq(ref dist, ..)
                 | Operation::Ne(ref dist, ..)
                 | Operation::Lt(ref dist, ..)
-                | Operation::Le(ref dist, ..) => {
-                    match const_maps[i].outs.get(&dist.string) {
-                        Some(Some(ref n)) => {
-                            self.internal_code[i] = Operation::Copy(dist.clone(), Token::new(n.to_string(), TokenType::NumLiteral));
-                        }
-                        _ => ()
+                | Operation::Le(ref dist, ..) => match const_maps[i].outs.get(&dist.string) {
+                    Some(Some(ref n)) => {
+                        self.internal_code[i] = Operation::Copy(
+                            dist.clone(),
+                            Token::new(n.to_string(), TokenType::NumLiteral),
+                        );
                     }
-                }
-                _ => ()
-            } 
+                    _ => (),
+                },
+                _ => (),
+            }
         }
     }
 }

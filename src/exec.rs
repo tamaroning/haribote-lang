@@ -74,22 +74,20 @@ impl Parser {
                         TokenType::StrLiteral => {
                             print!("{}", val_tok.string);
                         }
-                        _ => panic!("Cannot print {}", val_tok.string)
+                        _ => panic!("Cannot print {}", val_tok.string),
                     }
                     io::stdout().flush().unwrap();
                 }
-                Operation::Println(ref val_tok) => {
-                    match &val_tok.ty {
-                        TokenType::Ident | TokenType::NumLiteral => {
-                            let val = var_map.get(val_tok);
-                            println!("{}", val);
-                        }
-                        TokenType::StrLiteral => {
-                            println!("{}", val_tok.string);
-                        }
-                        _ => panic!("Cannot print {}", val_tok.string)
+                Operation::Println(ref val_tok) => match &val_tok.ty {
+                    TokenType::Ident | TokenType::NumLiteral => {
+                        let val = var_map.get(val_tok);
+                        println!("{}", val);
                     }
-                }
+                    TokenType::StrLiteral => {
+                        println!("{}", val_tok.string);
+                    }
+                    _ => panic!("Cannot print {}", val_tok.string),
+                },
                 Operation::Goto(ref label) => {
                     pc = var_map.get(label) as usize;
                     continue;
