@@ -1,3 +1,3 @@
-prints "Hello, ";
-prints "Haribote ";
-prints "Language!\n";
+print "Hello, ";
+print "Haribote ";
+print "Language!\n";
