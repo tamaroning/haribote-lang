@@ -18,13 +18,13 @@ pub fn dump_token(tok: &Token) -> String {
             format!("{}(Simbol)", tok.string)
         }
         &TokenType::Ident => {
-            format!("{}(Ident)", tok.string)
+            format!("{}", tok.string)
         }
         &TokenType::NumLiteral => {
-            format!("{}(Num)", tok.string)
+            format!("i32 {}", tok.string)
         }
         &TokenType::StrLiteral => {
-            format!("\"{}\"(Str)", tok.string)
+            format!("Str \"{}\"", tok.string)
         }
     }
 }

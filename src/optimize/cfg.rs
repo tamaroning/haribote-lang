@@ -38,3 +38,45 @@ pub fn ic_to_cfg(ops: &Vec<Operation>, var_map: &mut VariableMap) -> Cfg {
     }
     cfg
 }
+
+/*
+#[derive(Debug)]
+struct AbsStmt {
+    updated: Option<Token>,
+    used: Vec<Token>,
+}
+
+impl AbsStmt {
+    fn new(up: Option<Token>, us: Vec<Token>) -> Self {
+        AbsStmt {
+            updated: up,
+            used: us,
+        }
+    }
+}
+
+fn op_to_abs_stmt(op: &Operation) -> AbsStmt {
+    match op {
+        Operation::Copy(ref dist, ref operand) => {
+            return AbsStmt::new(Some(dist.clone()), vec![operand.clone()]);
+        }
+        Operation::Add(ref dist, ref operand1, ref operand2)
+        | Operation::Sub(ref dist, ref operand1, ref operand2)
+        | Operation::Mul(ref dist, ref operand1, ref operand2)
+        | Operation::Div(ref dist, ref operand1, ref operand2)
+        | Operation::Eq(ref dist, ref operand1, ref operand2)
+        | Operation::Ne(ref dist, ref operand1, ref operand2)
+        | Operation::Le(ref dist, ref operand1, ref operand2)
+        | Operation::Lt(ref dist, ref operand1, ref operand2) => {
+            return AbsStmt::new(Some(dist.clone()), vec![operand1.clone(), operand2.clone()]);
+        }
+        Operation::Print(ref operand) | Operation::IfGoto(ref operand, _) => {
+            return AbsStmt::new(None, vec![operand.clone()]);
+        }
+        Operation::Goto(..) | Operation::Time => {
+            return AbsStmt::new(None, vec![]);
+        }
+        _ => unimplemented!(),
+    }
+}
+*/
