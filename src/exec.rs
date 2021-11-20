@@ -116,6 +116,7 @@ impl Parser {
                     let val = var_map.get(val_tok);
                     var_map.array_set(ident, index, val);
                 }
+                Operation::Nop => (),
             }
             pc += 1;
         }

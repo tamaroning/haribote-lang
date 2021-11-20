@@ -22,6 +22,7 @@ pub enum Operation {
     ArrayNew(Token, Token),        // name, size
     ArraySet(Token, Token, Token), // name, index, val
     ArrayGet(Token, Token, Token), // dist, name, index
+    Nop,
 }
 
 fn dump_operation(op: &Operation) {
@@ -138,6 +139,9 @@ fn dump_operation(op: &Operation) {
                 lexer::dump_token(index_tok),
                 lexer::dump_token(val_tok)
             );
+        }
+        Operation::Nop => {
+            println!("nop");
         }
     }
 }
