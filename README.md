@@ -11,6 +11,7 @@ This repository is a remodelled implementation in Rust of the original version, 
 - and optimized in the following ways :
     - Constant Folding & Constant Propagation
     - Peekhole Optimization
+    - Removing Unreachable Operations
 
 # Build
 haribote-lang run on Windows, OSX, Linux, UNIX.  
