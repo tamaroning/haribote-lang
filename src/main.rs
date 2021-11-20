@@ -20,6 +20,7 @@ pub fn run(s: String, var_map: &mut VariableMap) {
     println!("Optimizing...");
     parser.optimize_constant_folding(var_map);
     parser.optimize_peekhole(var_map);
+    parser.remove_unreachable_ops(var_map);
     parser.dump_internal_code(var_map);
     parser.exec(var_map);
 }
