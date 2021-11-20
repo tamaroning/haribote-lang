@@ -1,7 +1,0 @@
-    goto A;
-A:
-    goto B;
-B:
-    goto C;
-C:
-print 0;

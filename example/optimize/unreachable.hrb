@@ -1,0 +1,8 @@
+goto A;
+println "removed";
+A:
+println "remain";
+goto B;
+println "removed";
+B:
+println "OK";
