@@ -1,4 +1,4 @@
-use crate::lexer::Token;
+use crate::lexer::{Token, TokenType};
 use std::collections::HashMap;
 
 #[derive(Debug)]
@@ -23,22 +23,17 @@ impl VariableMap {
 
     // TODO: to_string() is a bottleneck
     pub fn get(&mut self, tok: &Token) -> i32 {
-        if self.map.contains_key(&tok.string) {
-            return *self.map.get(&tok.string).unwrap();
-        } else {
-            let opt = tok.string.parse::<i32>();
-            match opt {
-                // numerical literals
-                Ok(n) => {
-                    self.map.insert(tok.string.to_string(), n);
-                    n
-                }
-                // undeclared valriables
-                Err(_) => {
+        match tok.ty {
+            TokenType::NumLiteral(n) => n,
+            // undeclared valriables
+            TokenType::Ident => match self.map.get(&tok.string) {
+                Some(n) => *n,
+                None => {
                     self.map.insert(tok.string.to_string(), 0);
                     0
                 }
-            }
+            },
+            _ => panic!(),
         }
     }
 
@@ -108,17 +103,7 @@ mod var_map_tests {
     #[test]
     fn test_numerical_literals() {
         let mut var = VariableMap::new();
-        assert_eq!(
-            var.get(&Token::new(String::from("100"), TokenType::NumLiteral)),
-            100
-        );
-        assert_eq!(
-            var.get(&Token::new(String::from("+0"), TokenType::NumLiteral)),
-            0
-        );
-        assert_eq!(
-            var.get(&Token::new(String::from("-30"), TokenType::NumLiteral)),
-            -30
-        );
+        assert_eq!(var.get(&Token::new_num(100, None)), 100);
+        assert_eq!(var.get(&Token::new(String::from("a"), TokenType::Ident)), 0);
     }
 }

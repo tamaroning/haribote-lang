@@ -22,7 +22,7 @@ impl ConstMap {
 
 fn is_constant(ins: &HashMap<String, Option<i32>>, tok: &Token) -> bool {
     match tok.ty {
-        TokenType::NumLiteral => true,
+        TokenType::NumLiteral(_) => true,
         TokenType::Ident => match ins.get(&tok.string) {
             Some(Some(_)) => true,
             Some(None) => false,
@@ -38,7 +38,7 @@ fn is_constant(ins: &HashMap<String, Option<i32>>, tok: &Token) -> bool {
 // Some(None) : there are multiple reaching defs
 fn get_constant_var(ins: &HashMap<String, Option<i32>>, tok: &Token) -> Option<i32> {
     match tok.ty {
-        TokenType::NumLiteral => Some(tok.string.parse::<i32>().unwrap()),
+        TokenType::NumLiteral(n) => Some(n),
         TokenType::Ident => match ins.get(&tok.string) {
             Some(Some(n)) => Some(*n),
             _ => None,
@@ -199,7 +199,7 @@ impl Parser {
                             Some(Some(ref n)) => {
                                 self.internal_code[i] = Operation::Copy(
                                     dist.clone(),
-                                    Token::new(n.to_string(), TokenType::NumLiteral),
+                                    Token::new_num(*n, None),
                                 );
                             }
                             _ => (),
@@ -217,7 +217,7 @@ impl Parser {
                     Some(Some(ref n)) => {
                         self.internal_code[i] = Operation::Copy(
                             dist.clone(),
-                            Token::new(n.to_string(), TokenType::NumLiteral),
+                            Token::new_num(*n, None),
                         );
                     }
                     _ => (),

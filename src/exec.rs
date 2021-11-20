@@ -67,7 +67,7 @@ impl Parser {
                 }
                 Operation::Print(ref val_tok) => {
                     match &val_tok.ty {
-                        TokenType::Ident | TokenType::NumLiteral => {
+                        TokenType::Ident | TokenType::NumLiteral(_) => {
                             let val = var_map.get(val_tok);
                             print!("{}", val);
                         }
@@ -79,7 +79,7 @@ impl Parser {
                     io::stdout().flush().unwrap();
                 }
                 Operation::Println(ref val_tok) => match &val_tok.ty {
-                    TokenType::Ident | TokenType::NumLiteral => {
+                    TokenType::Ident | TokenType::NumLiteral(_) => {
                         let val = var_map.get(val_tok);
                         println!("{}", val);
                     }

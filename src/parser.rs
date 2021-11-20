@@ -269,7 +269,7 @@ impl Parser {
             let tmp = self.make_temp_var();
             let op = Operation::Sub(
                 tmp.clone(),
-                Token::new(String::from("0"), TokenType::NumLiteral),
+                Token::new_num(0, None),
                 self.primary(),
             );
             self.push_internal_code(op);
@@ -521,7 +521,7 @@ impl Parser {
                 self.push_internal_code(Operation::Eq(
                     not_expr0.clone(),
                     expr0,
-                    Token::new(String::from("0"), TokenType::NumLiteral),
+                    Token::new_num(0, None),
                 ));
                 self.push_internal_code(Operation::IfGoto(not_expr0, label0.clone()));
             // if (!e0) goto L0;
@@ -574,7 +574,7 @@ impl Parser {
                     self.push_internal_code(Operation::Eq(
                         not_expr1.clone(),
                         expr1,
-                        Token::new(String::from("0"), TokenType::NumLiteral),
+                        Token::new_num(0, None),
                     ));
                     self.push_internal_code(Operation::IfGoto(not_expr1, label0.clone()));
                     // if (!e0) goto L0;

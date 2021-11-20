@@ -2,13 +2,14 @@
 pub struct Token {
     pub string: String,
     pub ty: TokenType,
+    pub line: Option<i32>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TokenType {
     Simbol,
     Ident,
-    NumLiteral,
+    NumLiteral(i32),
     StrLiteral,
 }
 
@@ -20,7 +21,7 @@ pub fn dump_token(tok: &Token) -> String {
         &TokenType::Ident => {
             format!("{}", tok.string)
         }
-        &TokenType::NumLiteral => {
+        &TokenType::NumLiteral(_) => {
             format!("i32 {}", tok.string)
         }
         &TokenType::StrLiteral => {
@@ -31,7 +32,15 @@ pub fn dump_token(tok: &Token) -> String {
 
 impl Token {
     pub fn new(s: String, ty: TokenType) -> Self {
-        Token { string: s, ty: ty }
+        Token { string: s, ty: ty, line: None }
+    }
+
+    pub fn new_with_line_num(s: String, ty: TokenType, line: i32) -> Self {
+        Token { string: s, ty: ty, line: Some(line) }
+    }
+
+    pub fn new_num(n: i32, line: Option<i32>) -> Self {
+        Token { string: n.to_string(), ty: TokenType::NumLiteral(n), line: line }
     }
 
     pub fn matches(&self, s: &str) -> bool {
@@ -65,6 +74,7 @@ fn is_normal_symbol(c: char) -> bool {
 pub struct Lexer {
     txt: String,
     pos: usize,
+    line: i32,
     pub tokens: Vec<Token>,
 }
 
@@ -73,6 +83,7 @@ impl Lexer {
         Lexer {
             txt: prg,
             pos: 0,
+            line: 0,
             tokens: Vec::new(),
         }
     }
@@ -87,6 +98,9 @@ impl Lexer {
 
             // skip whitespace
             if is_whitespace(self.next_char()) {
+                if self.next_char() == '\n' {
+                    self.line += 1;
+                }
                 self.pos += 1;
                 continue;
             }
@@ -110,7 +124,7 @@ impl Lexer {
                 }
                 let mut s = self.txt[start_pos + 1..self.pos - 1].to_string();
                 s = s.replace("\\n", "\n");
-                self.tokens.push(Token::new(s, TokenType::StrLiteral));
+                self.tokens.push(Token::new_with_line_num(s, TokenType::StrLiteral, self.line));
                 continue;
             }
 
@@ -124,7 +138,8 @@ impl Lexer {
                 while self.pos < self.txt.len() && self.next_char().is_numeric() {
                     self.pos += 1;
                 }
-                tok_ty = TokenType::NumLiteral;
+                let s = self.txt[start_pos..self.pos].to_string();
+                tok_ty = TokenType::NumLiteral(s.parse::<i32>().unwrap());
             } else if self.next_char().is_alphabetic() {
                 self.pos += 1;
                 while self.pos < self.txt.len() && self.next_char().is_alphanumeric() {
@@ -142,7 +157,7 @@ impl Lexer {
                 std::process::exit(0);
             }
             let s = self.txt[start_pos..self.pos].to_string();
-            self.tokens.push(Token::new(s, tok_ty));
+            self.tokens.push(Token::new_with_line_num(s, tok_ty, self.line));
         }
         self.tokens
             .push(Token::new(String::from("."), TokenType::Simbol));
