@@ -159,12 +159,16 @@ impl Lexer {
             let s = self.txt[start_pos..self.pos].to_string();
             self.tokens.push(Token::new_with_line_num(s, tok_ty, self.line));
         }
+        // if the input lacks a semicolon at the end, push a semicolon
+        if !self.tokens[self.tokens.len() - 1].matches(";") {
+            self.tokens.push(Token::new(String::from(";"), TokenType::Simbol));
+        }
         self.tokens
-            .push(Token::new(String::from("."), TokenType::Simbol));
+            .push(Token::new(String::from(""), TokenType::Simbol));
         self.tokens
-            .push(Token::new(String::from("."), TokenType::StrLiteral));
+            .push(Token::new(String::from(""), TokenType::StrLiteral));
         self.tokens
-            .push(Token::new(String::from("."), TokenType::StrLiteral));
+            .push(Token::new(String::from(""), TokenType::StrLiteral));
     }
 }
 
