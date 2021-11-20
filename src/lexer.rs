@@ -32,15 +32,27 @@ pub fn dump_token(tok: &Token) -> String {
 
 impl Token {
     pub fn new(s: String, ty: TokenType) -> Self {
-        Token { string: s, ty: ty, line: None }
+        Token {
+            string: s,
+            ty: ty,
+            line: None,
+        }
     }
 
     pub fn new_with_line_num(s: String, ty: TokenType, line: i32) -> Self {
-        Token { string: s, ty: ty, line: Some(line) }
+        Token {
+            string: s,
+            ty: ty,
+            line: Some(line),
+        }
     }
 
     pub fn new_num(n: i32, line: Option<i32>) -> Self {
-        Token { string: n.to_string(), ty: TokenType::NumLiteral(n), line: line }
+        Token {
+            string: n.to_string(),
+            ty: TokenType::NumLiteral(n),
+            line: line,
+        }
     }
 
     pub fn matches(&self, s: &str) -> bool {
@@ -124,7 +136,11 @@ impl Lexer {
                 }
                 let mut s = self.txt[start_pos + 1..self.pos - 1].to_string();
                 s = s.replace("\\n", "\n");
-                self.tokens.push(Token::new_with_line_num(s, TokenType::StrLiteral, self.line));
+                self.tokens.push(Token::new_with_line_num(
+                    s,
+                    TokenType::StrLiteral,
+                    self.line,
+                ));
                 continue;
             }
 
@@ -157,11 +173,13 @@ impl Lexer {
                 std::process::exit(0);
             }
             let s = self.txt[start_pos..self.pos].to_string();
-            self.tokens.push(Token::new_with_line_num(s, tok_ty, self.line));
+            self.tokens
+                .push(Token::new_with_line_num(s, tok_ty, self.line));
         }
         // if the input lacks a semicolon at the end, push a semicolon
         if !self.tokens[self.tokens.len() - 1].matches(";") {
-            self.tokens.push(Token::new(String::from(";"), TokenType::Simbol));
+            self.tokens
+                .push(Token::new(String::from(";"), TokenType::Simbol));
         }
         self.tokens
             .push(Token::new(String::from(""), TokenType::Simbol));

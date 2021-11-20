@@ -197,10 +197,8 @@ impl Parser {
                     if operand.ty == TokenType::Ident {
                         match const_maps[i].outs.get(&dist.string) {
                             Some(Some(ref n)) => {
-                                self.internal_code[i] = Operation::Copy(
-                                    dist.clone(),
-                                    Token::new_num(*n, None),
-                                );
+                                self.internal_code[i] =
+                                    Operation::Copy(dist.clone(), Token::new_num(*n, None));
                             }
                             _ => (),
                         }
@@ -215,10 +213,8 @@ impl Parser {
                 | Operation::Lt(ref dist, ..)
                 | Operation::Le(ref dist, ..) => match const_maps[i].outs.get(&dist.string) {
                     Some(Some(ref n)) => {
-                        self.internal_code[i] = Operation::Copy(
-                            dist.clone(),
-                            Token::new_num(*n, None),
-                        );
+                        self.internal_code[i] =
+                            Operation::Copy(dist.clone(), Token::new_num(*n, None));
                     }
                     _ => (),
                 },

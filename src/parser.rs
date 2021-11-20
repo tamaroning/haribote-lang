@@ -267,11 +267,7 @@ impl Parser {
         if self.lexer.tokens[self.expr_pos].matches("-") {
             self.expr_pos += 1;
             let tmp = self.make_temp_var();
-            let op = Operation::Sub(
-                tmp.clone(),
-                Token::new_num(0, None),
-                self.primary(),
-            );
+            let op = Operation::Sub(tmp.clone(), Token::new_num(0, None), self.primary());
             self.push_internal_code(op);
             return tmp;
         } else if self.lexer.tokens[self.expr_pos].matches("+") {

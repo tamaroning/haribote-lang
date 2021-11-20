@@ -162,7 +162,7 @@ mod test {
         let src = String::from("a = 3; b = a; A: b = 100; goto A;");
         let mut var_map = VariableMap::new();
         let mut parser = Parser::new(src);
-        parser.compile(&mut var_map);
+        let _ = parser.compile(&mut var_map);
         parser.dump_internal_code(&mut var_map);
         optimize::cfg::ic_to_cfg(&parser.internal_code, &mut var_map);
     }
@@ -172,7 +172,7 @@ mod test {
         let src = String::from("a = 1; b = 2; c = 3; c = e;");
         let mut var_map = VariableMap::new();
         let mut parser = Parser::new(src);
-        parser.compile(&mut var_map);
+        let _ = parser.compile(&mut var_map);
         //parser.dump_internal_code(&mut var_map);
         let cfg = optimize::cfg::ic_to_cfg(&parser.internal_code, &mut var_map);
         //println!("succs: {:?}", cfg.succs);
@@ -194,7 +194,7 @@ mod test {
         let src = String::from("a = 0 + 4; i = 0; A: i = i + 1; b = a + 4; goto A;");
         let mut var_map = VariableMap::new();
         let mut parser = Parser::new(src);
-        parser.compile(&mut var_map);
+        let _ = parser.compile(&mut var_map);
         //parser.dump_internal_code(&mut var_map);
         let cfg = optimize::cfg::ic_to_cfg(&parser.internal_code, &mut var_map);
         //println!("succs: {:?}", cfg.succs);
