@@ -24,7 +24,7 @@ fn is_constant(ins: &HashMap<String, Option<i32>>, tok: &Token) -> bool {
     match tok.ty {
         TokenType::NumLiteral => true,
         TokenType::Ident => match ins.get(&tok.string) {
-            Some(Some(n)) => true,
+            Some(Some(_)) => true,
             Some(None) => false,
             None => false,
         },
@@ -119,7 +119,6 @@ impl Cfg {
                 | &Operation::Ne(ref dist, ref operand1, ref operand2)
                 | &Operation::Lt(ref dist, ref operand1, ref operand2)
                 | &Operation::Le(ref dist, ref operand1, ref operand2) => {
-                    let dist_val = get_constant_var(&ins, dist);
                     let operand1_val = get_constant_var(&ins, operand1);
                     let operand2_val = get_constant_var(&ins, operand2);
                     if is_constant(&ins, operand1) && is_constant(&ins, operand2) {

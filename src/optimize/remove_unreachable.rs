@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 use super::cfg::ic_to_cfg;
 use crate::parser::{Operation, Parser};

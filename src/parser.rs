@@ -651,7 +651,6 @@ impl Parser {
         // show the all labels
         for s in var_map.label_map.keys() {
             let line = var_map.label_map.get(s).unwrap();
-
             label_map[*line as usize].insert(Token::new(s.clone(), TokenType::Ident));
         }
 
