@@ -433,7 +433,7 @@ impl Parser {
         return true;
     }
 
-    pub fn compile(&mut self, var: &mut VariableMap) {
+    pub fn compile(&mut self, var: &mut VariableMap) -> Result<(), String> {
         while self.pos < self.lexer.tokens.len() - 3 {
             // println!("Statement starts with tokens[{}]={:?}", self.pos, self.lexer.tokens[self.pos]);
             // (simple) assignment
@@ -633,16 +633,17 @@ impl Parser {
             } else if self.lexer.tokens[self.pos].matches(";") {
                 continue;
             }
-            // syntax error
+            // report syntax error
             else {
-                panic!(
+                return Err(format!(
                     "Syntax error: {} {} {}",
                     self.lexer.tokens[self.pos].string,
                     self.lexer.tokens[self.pos + 1].string,
                     self.lexer.tokens[self.pos + 2].string,
-                );
+                ));
             }
         }
+        Ok(())
     }
 
     pub fn dump_internal_code(&self, var_map: &mut VariableMap) {

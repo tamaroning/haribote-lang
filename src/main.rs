@@ -1,3 +1,4 @@
+mod error;
 mod exec;
 mod lexer;
 mod optimize;
@@ -15,7 +16,10 @@ use var_map::VariableMap;
 
 pub fn run(s: String, var_map: &mut VariableMap) {
     let mut parser = Parser::new(s);
-    parser.compile(var_map);
+    if let Err(e) = parser.compile(var_map) {
+        println!("{}", e);
+        return;
+    }
     //parser.dump_internal_code(var_map);
     println!("Optimizing...");
     parser.optimize_constant_folding(var_map);
