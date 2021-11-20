@@ -56,11 +56,8 @@ impl Cfg {
         for i in 0..self.nodes.len() {
             worklist.insert(i);
         }
-        let mut c = 0;
-        while !worklist.is_empty() {
-            c = c + 1;
-            //if c==30 {break;}
 
+        while !worklist.is_empty() {
             let idx = *worklist.iter().next().unwrap();
             worklist.remove(&idx);
 
@@ -92,7 +89,6 @@ impl Cfg {
                     }
                 }
             }
-            //println!("{}.in {:?}", idx, ins);
 
             // INs = f(INs)
             match op {
@@ -169,8 +165,6 @@ impl Cfg {
                 }
                 _ => (),
             }
-            //println!("{}.out↓{:?}", idx, const_maps[idx].outs);
-            //println!("{}.out {:?}", idx, ins);
 
             // if f(INs) != OUTs then pushes all successors of the node into worklist
             if ins != const_maps[idx].outs {
@@ -181,8 +175,6 @@ impl Cfg {
                 }
             }
         }
-        //println!("WL {:?}", worklist);
-        //println!("{:?}", const_maps);
         const_maps
     }
 }

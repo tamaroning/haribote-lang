@@ -396,9 +396,7 @@ impl Parser {
     // *tXX: any token, *eXX: any expression (length > 0), **eXX: any expression (length >= 0. If length = 0, the beginning must be ";" or ")")
     fn phrase_compare<const N: usize>(&mut self, phr: [&'static str; N]) -> bool {
         let inst_start_pos = self.pos;
-        //println!("phr: {:?}", phr);
         for i in 0..N {
-            //println!("compare {:?} with {:?}", self.lexer.tokens[self.pos].string, phr[i]);
             if phr[i].starts_with("*t") {
                 let n = phr[i][2..].parse::<usize>().unwrap();
                 // TODO: this clone can be replaced something like Option::take?
@@ -431,7 +429,6 @@ impl Parser {
 
     pub fn compile(&mut self, var: &mut VariableMap) -> Result<(), String> {
         while self.pos < self.lexer.tokens.len() - 3 {
-            // println!("Statement starts with tokens[{}]={:?}", self.pos, self.lexer.tokens[self.pos]);
             // (simple) assignment
             if self.phrase_compare(["*t0", "=", "*t1", ";"]) {
                 let param0 = self.cur_token_param[0].take().unwrap();

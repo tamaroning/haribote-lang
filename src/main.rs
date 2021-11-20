@@ -173,10 +173,7 @@ mod test {
         let mut var_map = VariableMap::new();
         let mut parser = Parser::new(src);
         let _ = parser.compile(&mut var_map);
-        //parser.dump_internal_code(&mut var_map);
         let cfg = optimize::cfg::ic_to_cfg(&parser.internal_code, &mut var_map);
-        //println!("succs: {:?}", cfg.succs);
-        //println!("preds: {:?}", cfg.preds);
         let const_maps = cfg.constant_propagation();
         let mut c = HashMap::new();
         c.insert(String::from("a"), Some(1));
@@ -195,10 +192,7 @@ mod test {
         let mut var_map = VariableMap::new();
         let mut parser = Parser::new(src);
         let _ = parser.compile(&mut var_map);
-        //parser.dump_internal_code(&mut var_map);
         let cfg = optimize::cfg::ic_to_cfg(&parser.internal_code, &mut var_map);
-        //println!("succs: {:?}", cfg.succs);
-        //println!("preds: {:?}", cfg.preds);
         let const_maps = cfg.constant_propagation();
         println!("{:?}", const_maps);
         let mut c = HashMap::new();
