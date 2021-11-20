@@ -5,10 +5,11 @@ use std::collections::HashMap;
 pub struct VariableMap {
     // integer variables.
     // Also used for branch labels.
-    // map["label"] represents the number of the line immidiately following label:
     pub map: HashMap<String, i32>,
     // integer arrays
     array_map: HashMap<String, Vec<i32>>,
+    // label_map["label"] represents the number of the line immidiately following label:
+    pub label_map: HashMap<String, i32>,
 }
 
 impl VariableMap {
@@ -16,6 +17,7 @@ impl VariableMap {
         VariableMap {
             map: HashMap::new(),
             array_map: HashMap::new(),
+            label_map: HashMap::new(),
         }
     }
 
@@ -82,6 +84,19 @@ impl VariableMap {
         }
         arr[index] = val;
         self.array_map.insert(ident.string.to_string(), arr);
+    }
+
+    // TODO: to_string() is a bottleneck
+    pub fn label_get(&mut self, tok: &Token) -> i32 {
+        match self.label_map.get(&tok.string) {
+            Some(line) => *line,
+            None => panic!("Unknown label"),
+        }
+    }
+
+    // TODO: to_string() is a bottleneck
+    pub fn label_set(&mut self, tok: &Token, val: i32) {
+        self.label_map.insert(tok.string.to_string(), val);
     }
 }
 

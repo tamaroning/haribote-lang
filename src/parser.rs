@@ -477,7 +477,7 @@ impl Parser {
             // label
             else if self.phrase_compare(["*t0", ":"]) {
                 let label = self.cur_token_param[0].take().unwrap();
-                var.set(&label, self.internal_code.len() as i32);
+                var.label_set(&label, self.internal_code.len() as i32);
                 continue;
             }
             // goto
@@ -539,7 +539,7 @@ impl Parser {
                     .push(Block::IfElse(label0.clone(), Some(label1.clone())));
 
                 self.push_internal_code(Operation::Goto(label1)); // Goto(L1)
-                var.set(label0, self.internal_code.len() as i32); // L0:
+                var.label_set(label0, self.internal_code.len() as i32); // L0:
             }
             // Parsing for statement
             // for (**e0; **e1; **e2) {
@@ -579,7 +579,7 @@ impl Parser {
                     self.push_internal_code(Operation::IfGoto(not_expr1, label0.clone()));
                     // if (!e0) goto L0;
                 }
-                var.set(&label1, self.internal_code.len() as i32); // L1:
+                var.label_set(&label1, self.internal_code.len() as i32); // L1:
             } else if self.phrase_compare(["}"]) {
                 let block = self
                     .blocks
@@ -587,13 +587,13 @@ impl Parser {
                     .unwrap_or_else(|| panic!("Unmatched braces"));
                 match block {
                     Block::IfElse(ref label0, None) => {
-                        var.set(label0, self.internal_code.len() as i32); // L0:
+                        var.label_set(label0, self.internal_code.len() as i32); // L0:
                     }
                     Block::IfElse(_, Some(ref label1)) => {
-                        var.set(label1, self.internal_code.len() as i32); // L1:
+                        var.label_set(label1, self.internal_code.len() as i32); // L1:
                     }
                     Block::For(ref label0, label1, ref label2, e1_start_pos, e2_start_pos) => {
-                        var.set(label2, self.internal_code.len() as i32); // L2:
+                        var.label_set(label2, self.internal_code.len() as i32); // L2:
                         self.evaluate_opt_expr(e2_start_pos);
                         let opt_expr1 = self.evaluate_opt_expr(e1_start_pos);
                         // if e1 (conditions) exists, emits IfGoto otherwise emits Goto
@@ -605,7 +605,7 @@ impl Parser {
                                 self.push_internal_code(Operation::Goto(label1));
                             }
                         }
-                        var.set(label0, self.internal_code.len() as i32); // L0:
+                        var.label_set(label0, self.internal_code.len() as i32); // L0:
                     }
                 }
             }
@@ -649,8 +649,9 @@ impl Parser {
         let mut label_map: Vec<HashSet<Token>> = vec![HashSet::new(); self.internal_code.len() + 1];
 
         // show the all labels
-        for s in var_map.map.keys() {
-            let line = var_map.map.get(s).unwrap();
+        for s in var_map.label_map.keys() {
+            let line = var_map.label_map.get(s).unwrap();
+
             label_map[*line as usize].insert(Token::new(s.clone(), TokenType::Ident));
         }
 

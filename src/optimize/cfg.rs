@@ -24,12 +24,12 @@ pub fn ic_to_cfg(ops: &Vec<Operation>, var_map: &mut VariableMap) -> Cfg {
     for i in 0..ops.len() {
         //println!("{} {:?}", i, ops[i]);
         if let Operation::Goto(ref label) = ops[i] {
-            let dist = var_map.get(label) as usize;
+            let dist = var_map.label_get(label) as usize;
             cfg.succs[i].push(dist);
             cfg.preds[dist].push(i);
             continue;
         } else if let Operation::IfGoto(_, ref label) = ops[i] {
-            let dist = var_map.get(label) as usize;
+            let dist = var_map.label_get(label) as usize;
             cfg.succs[i].push(dist);
             cfg.preds[dist].push(i);
         }

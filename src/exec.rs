@@ -89,13 +89,13 @@ impl Parser {
                     _ => panic!("Cannot print {}", val_tok.string),
                 },
                 Operation::Goto(ref label) => {
-                    pc = var_map.get(label) as usize;
+                    pc = var_map.label_get(label) as usize;
                     continue;
                 }
                 Operation::IfGoto(ref cond, ref label) => {
                     let cond_val = var_map.get(cond);
                     if cond_val != 0 {
-                        pc = var_map.get(label) as usize;
+                        pc = var_map.label_get(label) as usize;
                         continue;
                     }
                 }

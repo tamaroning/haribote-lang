@@ -10,7 +10,7 @@ impl Parser {
         for ic in &self.internal_code {
             match ic {
                 Operation::Goto(ref label) | Operation::IfGoto(_, ref label) => {
-                    let label_pos = var_map.get(label);
+                    let label_pos = var_map.label_get(label);
                     label_map[label_pos as usize].insert(label.clone());
                 }
                 _ => (),
@@ -33,7 +33,7 @@ impl Parser {
         from: &'a Token,
         start: &'a Token,
     ) -> &'a Token {
-        let label_line = var_map.get(&from) as usize;
+        let label_line = var_map.label_get(&from) as usize;
         if label_line >= self.internal_code.len() {
             return from;
         }
