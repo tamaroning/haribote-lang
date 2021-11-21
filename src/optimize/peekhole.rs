@@ -29,7 +29,7 @@ impl Parser {
         }
     }
 
-    pub fn optimize_peekhole(&mut self, var_map: &mut VariableMap) {
+    fn optimize_jump_chain(&mut self, var_map: &mut VariableMap) {
         for i in 0..self.internal_code.len() {
             if let Operation::Goto(ref label) = self.internal_code[i] {
                 let final_dist = self.get_dist(var_map, label, label);
@@ -44,5 +44,9 @@ impl Parser {
                 }
             }
         }
+    }
+
+    pub fn optimize_peekhole(&mut self, var_map: &mut VariableMap) {
+        self.optimize_jump_chain(var_map);
     }
 }
