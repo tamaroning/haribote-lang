@@ -14,6 +14,8 @@ use std::io::prelude::*;
 use std::str;
 use var_map::VariableMap;
 
+const VERSION_STR: &'static str = env!("CARGO_PKG_VERSION");
+
 pub fn run(s: String, var_map: &mut VariableMap) {
     let mut parser = Parser::new(s);
     if let Err(e) = parser.compile(var_map) {
@@ -41,7 +43,7 @@ fn main() {
     let args: Vec<String> = env::args().collect();
 
     if args.len() > 3 {
-        println!("haribote-lang");
+        println!("haribote-lang version {}", VERSION_STR);
         println!("Usage: haribote-lang <file path>");
         std::process::exit(0);
     }
@@ -56,14 +58,15 @@ fn main() {
 
     // REPL
     if args.len() == 1 {
-        println!("haribote-lang interactive mode");
+        println!("haribote-lang version {}", VERSION_STR);
+        println!("Running in Interactive mode");
+        println!("Type \"run <filepath>\" to load and run the file.");
         loop {
             let mut input = String::new();
-            print!("> ");
+            print!(">>> ");
             io::stdout().flush().unwrap();
             io::stdin().read_line(&mut input).expect("input error");
-            input = input.replace("\r", "");
-            input = input.replace("\n", "");
+            input = input.replace("\r", "").replace("\n", "");
             // exit
             if input.as_str() == "exit" {
                 std::process::exit(0);
