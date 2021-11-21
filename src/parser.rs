@@ -621,11 +621,8 @@ impl Parser {
                 let expr1 = self.expr();
 
                 self.push_internal_code(Operation::ArraySet(param0, expr0, expr1));
-            } else if self.phrase_compare(["*e0", ";"]) {
+            } else if self.phrase_compare(["**e0", ";"]) {
                 self.get_expr_param(0);
-            } else if self.lexer.tokens[self.pos].matches(";") {
-                self.pos += 1;
-                continue;
             }
             // report syntax error
             else {
