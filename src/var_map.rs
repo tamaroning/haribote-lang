@@ -1,4 +1,4 @@
-use crate::error::{self, error_exit};
+use crate::error::error_exit;
 use crate::lexer::{Token, TokenType};
 use std::collections::HashMap;
 
