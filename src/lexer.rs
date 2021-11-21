@@ -1,3 +1,5 @@
+use crate::error::error_exit;
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Token {
     pub string: String,
@@ -132,7 +134,7 @@ impl Lexer {
                     self.pos += 1;
                 }
                 if !dq_found {
-                    panic!("Lexer error: Unmatched '\"'");
+                    error_exit(String::from("Lexer error: Unmatched '\"'"));
                 }
                 let mut s = self.txt[start_pos + 1..self.pos - 1].to_string();
                 s = s.replace("\\n", "\n");

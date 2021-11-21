@@ -1,3 +1,4 @@
+use crate::error::{self, error_exit};
 use crate::lexer::{Token, TokenType};
 use std::collections::HashMap;
 
@@ -52,7 +53,7 @@ impl VariableMap {
         let arr = self
             .array_map
             .get(&ident.string)
-            .unwrap_or_else(|| panic!("Undeclared array: {}", ident.string));
+            .unwrap_or_else(|| error_exit(format!("Undeclared array: {}", ident.string)));
         if index >= arr.len() {
             panic!(
                 "Index out of bounds: the len of {} is {} but the index is {}",
@@ -68,14 +69,14 @@ impl VariableMap {
         let mut arr = self
             .array_map
             .remove(&ident.string)
-            .unwrap_or_else(|| panic!("Undeclared array: {}", ident.string));
+            .unwrap_or_else(|| error_exit(format!("Undeclared array: {}", ident.string)));
         if index >= arr.len() {
-            panic!(
+            error_exit(format!(
                 "Index out of bounds: the len of {} is {} but the index is {}",
                 ident.string,
                 arr.len(),
                 index
-            );
+            ));
         }
         arr[index] = val;
         self.array_map.insert(ident.string.to_string(), arr);
@@ -85,7 +86,7 @@ impl VariableMap {
     pub fn label_get(&mut self, tok: &Token) -> i32 {
         match self.label_map.get(&tok.string) {
             Some(line) => *line,
-            None => panic!("Unknown label"),
+            None => error_exit(String::from("Undefined label")),
         }
     }
 

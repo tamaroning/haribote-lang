@@ -1,4 +1,5 @@
 use super::cfg::{self, Cfg};
+use crate::error::error_exit;
 use crate::lexer::{Token, TokenType};
 use crate::parser::{Operation, Parser};
 use crate::var_map::VariableMap;
@@ -124,7 +125,7 @@ impl Cfg {
                             Operation::Mul(..) => operand1_val.unwrap() * operand2_val.unwrap(),
                             Operation::Div(..) => {
                                 if operand2_val.unwrap() == 0 {
-                                    panic!("Found divisionn by zero");
+                                    error_exit(String::from("Found divisionn by zero"));
                                 }
                                 operand1_val.unwrap() / operand2_val.unwrap()
                             }

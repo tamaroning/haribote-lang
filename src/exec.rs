@@ -1,5 +1,6 @@
 use std::io::{self, Write};
 
+use crate::error::error_exit;
 use crate::lexer::TokenType;
 use crate::parser::{Operation, Parser};
 use crate::var_map::VariableMap;
@@ -41,7 +42,7 @@ impl Parser {
                     let lhs_val = var_map.get(lhs);
                     let rhs_val = var_map.get(rhs);
                     if rhs_val == 0 {
-                        panic!("Zero division error");
+                        error_exit(String::from("Zero division error"));
                     }
                     var_map.set(dist, lhs_val / rhs_val);
                 }
@@ -74,7 +75,7 @@ impl Parser {
                         TokenType::StrLiteral => {
                             print!("{}", val_tok.string);
                         }
-                        _ => panic!("Cannot print {}", val_tok.string),
+                        _ => error_exit(format!("Cannot print {}", val_tok.string)),
                     }
                     io::stdout().flush().unwrap();
                 }
@@ -86,7 +87,7 @@ impl Parser {
                     TokenType::StrLiteral => {
                         println!("{}", val_tok.string);
                     }
-                    _ => panic!("Cannot print {}", val_tok.string),
+                    _ => error_exit(format!("Cannot print {}", val_tok.string)),
                 },
                 Operation::Goto(ref label) => {
                     pc = var_map.label_get(label) as usize;
