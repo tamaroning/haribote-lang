@@ -99,10 +99,10 @@ mod test {
 
     #[test]
     fn test_expr() {
-        let src = String::from("a = 10; result = tmp = a * 2; ");
+        let src = String::from("a = 10 + 2 * 7 - 4;");
         let mut var = VariableMap::new();
         run(src, &mut var);
-        let result = var.get(&Token::new(String::from("result"), lexer::TokenType::Ident));
+        let result = var.get(&Token::new(String::from("a"), lexer::TokenType::Ident));
         assert_eq!(result, 20);
     }
 
@@ -117,11 +117,11 @@ mod test {
 
     #[test]
     fn test_goto() {
-        let src = String::from("result = 1; goto A; B: result = result + 4; goto C; A: result = result + 2; goto B; C:");
+        let src = String::from("result = 1; goto A; B: result = result * 4; goto C; A: result = result + 2; goto B; C:");
         let mut var = VariableMap::new();
         run(src, &mut var);
         let result = var.get(&Token::new(String::from("result"), lexer::TokenType::Ident));
-        assert_eq!(result, 7);
+        assert_eq!(result, 12);
     }
 
     #[test]
@@ -188,7 +188,7 @@ mod test {
 
     #[test]
     fn test_constant_propagation_on_cyclic_graph() {
-        let src = String::from("a = 0 + 4; i = 0; A: i = i + 1; b = a + 4; goto A;");
+        let src = String::from("i = 0; A: i = i + 1; goto A;");
         let mut var_map = VariableMap::new();
         let mut parser = Parser::new(src);
         let _ = parser.compile(&mut var_map);
@@ -196,14 +196,12 @@ mod test {
         let const_maps = cfg.constant_propagation();
         println!("{:?}", const_maps);
         let mut c = HashMap::new();
-        c.insert(String::from("a"), Some(4));
-        assert_eq!(const_maps[0].outs, c);
         c.insert(String::from("i"), Some(0));
-        assert_eq!(const_maps[1].outs, c);
+        assert_eq!(const_maps[0].outs, c);
         c.insert(String::from("i"), None);
-        c.insert(String::from("b"), Some(8));
+        c.insert(String::from("_tmp0"), None);
+        assert_eq!(const_maps[1].outs, c);
         assert_eq!(const_maps[2].outs, c);
         assert_eq!(const_maps[3].outs, c);
-        assert_eq!(const_maps[4].outs, c);
     }
 }
