@@ -1,6 +1,5 @@
 # haribote-lang
 [![CircleCI](https://circleci.com/gh/tamaroning/haribote-lang/tree/main.svg?style=shield)](https://circleci.com/gh/tamaroning/haribote-lang/tree/main)
-
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 haribote-lang is a simple and fast programming language for education originally made by Mr.Kawai.  
