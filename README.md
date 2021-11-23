@@ -8,12 +8,9 @@ This repository is a remodelled implementation in Rust of the original version, 
 - This repository contains hrb, haribote-lang interpreter
 - hrb runs in two modes, normal mode and interactive mode (a.k.a. REPL)
 - Input source code is converted into internal code
-- and optimized in the following ways :
-    - Constant Folding & Constant Propagation
-    - Removing Unreachable Operations
-    - Peekhole Optimization
+- and optimized it in several ways
 
-For further information, See [Optimization Strategy](#Optimization Strategy) or [My Blog(ja)](https://tamaron.hatenablog.com/entry/2021/11/20/165929).
+For further information, See [Optimization Strategy](#Optimization-Strategy) or [My Blog(ja)](https://tamaron.hatenablog.com/entry/2021/11/20/165929).
 
 # Build
 haribote-lang run on Windows, OSX, Linux, UNIX.  
@@ -112,13 +109,20 @@ primary     ::= <Num> | <Ident> ( "[" expr "]" )?
 ```
 
 # Optimization Strategy
+
+hrb supports the following optimization methods:
+- [Constant Folding & Constant Propagation](#Constant-Folding-&Constant-Propagation)
+- [Removing Unreachable Operations](#Removing-Unreachable-Operations)
+- [Peekhole Optimization](#Peekhole-Optimization)
+    - [Jump Chain Optimization](#Jump-Chain-Optimization)
+
 Basic strategy is as follows:
 
 1. Build a control-flow graph
 2. Data-flow analysis
 3. Change code
 
-## Constant Folding & Constant Propagation
+## Constant Folding &Constant Propagation
 1. Let each CFG node have a constant variable table.
 2. Information of constant variables moves to other nodes along the control flow. (One of the good ways is using a queue.)
 3. Replace arithmetic operations with copy operations by using information of the final stete.
