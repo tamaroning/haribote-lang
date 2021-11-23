@@ -10,8 +10,10 @@ This repository is a remodelled implementation in Rust of the original version, 
 - Input source code is converted into internal code
 - and optimized in the following ways :
     - Constant Folding & Constant Propagation
-    - Peekhole Optimization
     - Removing Unreachable Operations
+    - Peekhole Optimization
+
+For further information, See [Optimization Strategy](#Optimization Strategy) or [My Blog(ja)](https://tamaron.hatenablog.com/entry/2021/11/20/165929).
 
 # Build
 haribote-lang run on Windows, OSX, Linux, UNIX.  
@@ -108,6 +110,49 @@ unary       ::= ("+" | "-")? primary
 primary     ::= <Num> | <Ident> ( "[" expr "]" )?
 
 ```
+
+# Optimization Strategy
+
+1. Build a control-flow graph
+2. Data-flow analysis
+3. Change code
+
+## Constant Folding & Constant Propagation
+
+1. Let each CFG node have a constant variable table.
+
+2. Information of constant variables moves to other nodes along the control flow.
+    - One of the good ways is using a queue. 
+
+4. Replace arithmetic operations with copy operations by using information of the final stete.
+
+## Removing Unreachable Operations
+
+1. Let each CFG node n have a boolean value b[n].
+
+2. Set all b[n]s falses.
+
+3. Set b[entry point] true.
+
+4. Do BFS and set every b[reachable node] true.
+
+5. Remove n such that b[n] = false.
+
+## Peekhole Optimization
+
+### Jump Chain Optimization
+
+It's unnecessary to build a CFG.
+
+1. Search a `goto(jump) L` operation. L is a label.
+
+2. If the distination label of L starts with a goto(jump) operation, get the destination of L.
+
+3. Repeat step 2. Finally get the final destination of label D. 
+
+4. If detects a cyclic control-flow in step 3, do nothing and finish.
+
+5. Replace the original `goto(jump) L` with `goto(jump) D`. 
 
 # Commit Logs
 You can see the commit log to follow the steps of implementation.  
