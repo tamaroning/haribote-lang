@@ -111,7 +111,7 @@ primary     ::= <Num> | <Ident> ( "[" expr "]" )?
 # Optimization Strategy
 
 hrb supports the following optimization methods:
-- [Constant Folding & Constant Propagation](#Constant-Folding-&Constant-Propagation)
+- [Constant Folding & Constant Propagation](#Constant-Folding-Constant-Propagation)<!--remove & from link-->
 - [Removing Unreachable Operations](#Removing-Unreachable-Operations)
 - [Peekhole Optimization](#Peekhole-Optimization)
     - [Jump Chain Optimization](#Jump-Chain-Optimization)
