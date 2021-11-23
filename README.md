@@ -112,46 +112,32 @@ primary     ::= <Num> | <Ident> ( "[" expr "]" )?
 ```
 
 # Optimization Strategy
+Basic strategy is as follows:
 
 1. Build a control-flow graph
 2. Data-flow analysis
 3. Change code
 
 ## Constant Folding & Constant Propagation
-
 1. Let each CFG node have a constant variable table.
-
-2. Information of constant variables moves to other nodes along the control flow.
-    - One of the good ways is using a queue. 
-
-4. Replace arithmetic operations with copy operations by using information of the final stete.
+2. Information of constant variables moves to other nodes along the control flow. (One of the good ways is using a queue.)
+3. Replace arithmetic operations with copy operations by using information of the final stete.
 
 ## Removing Unreachable Operations
-
 1. Let each CFG node n have a boolean value b[n].
-
 2. Set all b[n]s falses.
-
 3. Set b[entry point] true.
-
 4. Do BFS and set every b[reachable node] true.
-
 5. Remove n such that b[n] = false.
 
 ## Peekhole Optimization
-
-### Jump Chain Optimization
-
 It's unnecessary to build a CFG.
 
+### Jump Chain Optimization
 1. Search a `goto(jump) L` operation. L is a label.
-
 2. If the distination label of L starts with a goto(jump) operation, get the destination of L.
-
 3. Repeat step 2. Finally get the final destination of label D. 
-
 4. If detects a cyclic control-flow in step 3, do nothing and finish.
-
 5. Replace the original `goto(jump) L` with `goto(jump) D`. 
 
 # Commit Logs
