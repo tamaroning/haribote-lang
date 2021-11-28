@@ -33,17 +33,29 @@ Run in an interactive mode:
 ./target/release/hrb
 ```
 
+# Usage
+- `hrb [OPTIONS] FILEPATH`: Run the program
+- `hrb [OPTIONS]`: Run in interactive mode
+- `hrb help`: show the usage
+
+### Options
+- `-emit-ir`: Display the intermidiate representation
+- `-no-optimize`: Doesn't optimize the program
+- `-no-exec`: Doesn't execute the program
+
 # Demo
 ```
 ?> ./hrb
-haribote-lang interactive mode
-> print "Hello World\n";  
+haribote-lang version 1.1.1
+Running in Interactive mode
+Type "run <filepath>" to load and run the file.
+>>> print "Hello World\n";  
 Hello World
-> a = 15; b = 20;       
-> c = a * b;  
-> print "answer is "; println c;
+>>> a = 15; b = 20;       
+>>> c = a * b;  
+>>> print "answer is "; println c;
 answer is 300
-> exit;
+>>> exit;
 ?>
 ```
 
@@ -61,6 +73,22 @@ Fibo_8 = 34
 Fibo_9 = 55
 Fibo_10 = 89
 Fibo_11 = 144
+?>
+```
+
+```
+?> ./hrb -emit-ir example/calc.hrb
+Optimizing...
+--------------- Dump of internal code ---------------
+        copy a, i32 1
+        copy b, i32 3
+        copy _tmp0, i32 3
+        copy _tmp1, i32 4
+        copy c, i32 4
+        copy _tmp0, i32 8
+        copy _tmp1, i32 10
+        copy c, i32 10
+-----------------------------------------------------
 ?>
 ```
 
@@ -109,6 +137,11 @@ primary     ::= <Num> | <Ident> ( "[" expr "]" )?
 
 ```
 
+# Intermidiate Representation
+Intermidiate Representation (IR) is a low-level code of haribote language.  
+Optimizations are taken place on IR.  
+In order to learn how IR is implemented, see a struct `Operation` in /src/parser.rs. 
+
 # Optimization Strategy
 
 hrb supports the following optimization methods:
@@ -145,6 +178,7 @@ It's unnecessary to build a CFG.
 4. If detects a cyclic control-flow in step 3, do nothing and finish.
 5. Replace the original `goto(jump) L` with `goto(jump) D`. 
 
+<!--
 # Commit Logs
 You can see the commit log to follow the steps of implementation.  
 The steps from 1 to 8 are the same as those of [the original version](http://essen.osask.jp/?a21_txt01).  
@@ -161,6 +195,7 @@ The steps from 1 to 8 are the same as those of [the original version](http://ess
 | 8 | if-else & for statement. Optimize goto. |
 | 9 | Array (declaration, assignment, random access). |
 | 10 | Constant Folding & Constant Propagation. |
+-->
 
 # References
 - http://essen.osask.jp/?a21_txt01
