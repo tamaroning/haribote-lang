@@ -62,7 +62,7 @@ impl VariableMap {
                 index
             );
         }
-        return arr[index];
+        arr[index]
     }
 
     pub fn array_set(&mut self, ident: &Token, index: usize, val: i32) {

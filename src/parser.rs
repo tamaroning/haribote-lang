@@ -205,7 +205,7 @@ impl Parser {
         lexer.lex();
         Parser {
             pos: 0,
-            lexer: lexer,
+            lexer,
             internal_code: Vec::new(),
             cur_token_param: Default::default(),
             cur_expr_param_start_pos: [0; 4],
@@ -218,7 +218,7 @@ impl Parser {
 
     fn make_temp_var(&mut self) -> Token {
         let ret = Token::new(
-            String::from(format!("_tmp{}", self.temp_var_cnt)),
+            format!("_tmp{}", self.temp_var_cnt),
             crate::lexer::TokenType::Ident,
         );
         self.temp_var_cnt += 1;
@@ -226,7 +226,7 @@ impl Parser {
     }
     fn make_temp_label(&mut self) -> Token {
         let ret = Token::new(
-            String::from(format!("_tmpLabel{}", self.temp_label_cnt)),
+            format!("_tmpLabel{}", self.temp_label_cnt),
             TokenType::Ident,
         );
         self.temp_label_cnt += 1;
@@ -274,7 +274,7 @@ impl Parser {
             self.expr_pos += 1;
             return Ok(self.primary()?);
         }
-        return self.primary();
+        self.primary()
     }
 
     parse_binary_op!(mul, unary, "*", Operation::Mul, "/", Operation::Div);
@@ -351,7 +351,7 @@ impl Parser {
                 }
                 //start_pos += 1;
                 len += 1;
-                return Ok(len);
+                Ok(len)
             }
             _ => {
                 //numerical literals or variables
@@ -384,7 +384,7 @@ impl Parser {
                         break;
                     }
                 }
-                return Ok(len);
+                Ok(len)
             }
         }
     }
@@ -426,7 +426,7 @@ impl Parser {
                 self.pos += 1;
             }
         }
-        return Ok(true);
+        Ok(true)
     }
 
     pub fn compile(&mut self, var: &mut VariableMap) -> Result<(), String> {
@@ -614,7 +614,6 @@ impl Parser {
                 match self.get_expr_opt_param(0) {
                     Some(r) => {
                         r?;
-                        ()
                     }
                     None => {
                         self.pos += 1;

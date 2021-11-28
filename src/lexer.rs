@@ -17,16 +17,14 @@ pub enum TokenType {
 
 pub fn dump_token(tok: &Token) -> String {
     match &tok.ty {
-        &TokenType::Simbol => {
+        TokenType::Simbol => {
             format!("{}(Simbol)", tok.string)
         }
-        &TokenType::Ident => {
-            format!("{}", tok.string)
-        }
-        &TokenType::NumLiteral(_) => {
+        TokenType::Ident => tok.string.to_string(),
+        TokenType::NumLiteral(_) => {
             format!("i32 {}", tok.string)
         }
-        &TokenType::StrLiteral => {
+        TokenType::StrLiteral => {
             format!("Str \"{}\"", tok.string)
         }
     }
@@ -36,7 +34,7 @@ impl Token {
     pub fn new(s: String, ty: TokenType) -> Self {
         Token {
             string: s,
-            ty: ty,
+            ty,
             line: None,
         }
     }
@@ -44,7 +42,7 @@ impl Token {
     pub fn new_with_line_num(s: String, ty: TokenType, line: i32) -> Self {
         Token {
             string: s,
-            ty: ty,
+            ty,
             line: Some(line),
         }
     }
@@ -53,7 +51,7 @@ impl Token {
         Token {
             string: n.to_string(),
             ty: TokenType::NumLiteral(n),
-            line: line,
+            line,
         }
     }
 
@@ -63,25 +61,32 @@ impl Token {
 }
 
 fn is_whitespace(c: char) -> bool {
-    match c {
-        ' ' | '\n' | '\t' | '\r' => true,
-        _ => false,
-    }
+    matches!(c, ' ' | '\n' | '\t' | '\r')
 }
 
 fn is_one_char_symbol(c: char) -> bool {
-    match c {
-        '(' | ')' | '{' | '}' | '[' | ']' | ';' | ',' => true,
-        _ => false,
-    }
+    matches!(c, '(' | ')' | '{' | '}' | '[' | ']' | ';' | ',')
 }
 
 fn is_normal_symbol(c: char) -> bool {
-    match c {
-        '=' | '+' | '-' | '*' | '/' | '!' | '%' | '&' | '~' | '|' | '<' | '>' | '?' | ':' | '.'
-        | '#' => true,
-        _ => false,
-    }
+    matches!(
+        c,
+        '=' | '+'
+            | '-'
+            | '*'
+            | '/'
+            | '!'
+            | '%'
+            | '&'
+            | '~'
+            | '|'
+            | '<'
+            | '>'
+            | '?'
+            | ':'
+            | '.'
+            | '#'
+    )
 }
 
 #[derive(Debug)]

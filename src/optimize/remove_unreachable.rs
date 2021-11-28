@@ -16,7 +16,7 @@ impl Parser {
             let n: usize = *worklist.iter().next().unwrap();
             worklist.remove(&n);
 
-            if is_reachable[n] == false {
+            if !is_reachable[n] {
                 is_reachable[n] = true;
                 for succ in &cfg.succs[n] {
                     worklist.insert(*succ);

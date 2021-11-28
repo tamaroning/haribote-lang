@@ -14,7 +14,7 @@ use std::io::prelude::*;
 use std::str;
 use var_map::VariableMap;
 
-const VERSION_STR: &'static str = env!("CARGO_PKG_VERSION");
+const VERSION_STR: &str = env!("CARGO_PKG_VERSION");
 
 pub fn run(s: String, var_map: &mut VariableMap) {
     let mut parser = Parser::new(s);
@@ -32,7 +32,7 @@ pub fn run(s: String, var_map: &mut VariableMap) {
 }
 
 fn load_text(path: &str) -> String {
-    let mut file = File::open(path.clone()).expect("File not found");
+    let mut file = File::open(path).expect("File not found");
     let mut txt = String::new();
     file.read_to_string(&mut txt)
         .expect("Couldn't open the file");

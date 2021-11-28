@@ -75,9 +75,7 @@ impl Cfg {
                     match ins.get(k) {
                         Some(Some(n)) => {
                             // overwrite with None
-                            if *v == None {
-                                ins.insert(k.clone(), None);
-                            } else if *n != v.unwrap() {
+                            if *v == None || *n != v.unwrap() {
                                 ins.insert(k.clone(), None);
                             }
                         }
@@ -188,12 +186,9 @@ impl Parser {
             match &self.internal_code[i] {
                 Operation::Copy(ref dist, ref operand) => {
                     if operand.ty == TokenType::Ident {
-                        match const_maps[i].outs.get(&dist.string) {
-                            Some(Some(ref n)) => {
-                                self.internal_code[i] =
-                                    Operation::Copy(dist.clone(), Token::new_num(*n, None));
-                            }
-                            _ => (),
+                        if let Some(Some(ref n)) = const_maps[i].outs.get(&dist.string) {
+                            self.internal_code[i] =
+                                Operation::Copy(dist.clone(), Token::new_num(*n, None));
                         }
                     }
                 }
@@ -204,13 +199,12 @@ impl Parser {
                 | Operation::Eq(ref dist, ..)
                 | Operation::Ne(ref dist, ..)
                 | Operation::Lt(ref dist, ..)
-                | Operation::Le(ref dist, ..) => match const_maps[i].outs.get(&dist.string) {
-                    Some(Some(ref n)) => {
+                | Operation::Le(ref dist, ..) => {
+                    if let Some(Some(ref n)) = const_maps[i].outs.get(&dist.string) {
                         self.internal_code[i] =
                             Operation::Copy(dist.clone(), Token::new_num(*n, None));
                     }
-                    _ => (),
-                },
+                }
                 _ => (),
             }
         }

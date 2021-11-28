@@ -10,22 +10,21 @@ impl Parser {
         from: &'a Token,
         start: &'a Token,
     ) -> &'a Token {
-        let label_line = var_map.label_get(&from) as usize;
+        let label_line = var_map.label_get(from) as usize;
         if label_line >= self.internal_code.len() {
             return from;
         }
         let first_op = &self.internal_code[label_line];
         match first_op {
-            &Operation::Goto(ref to) => {
+            Operation::Goto(ref to) => {
                 // If goto chains loops, return start
                 if *to == *start {
                     return start;
                 }
                 // recurssion
-                let rec = self.get_dist(var_map, to, start);
-                return rec;
+                self.get_dist(var_map, to, start)
             }
-            _ => return from,
+            _ => from,
         }
     }
 
