@@ -654,7 +654,6 @@ impl Parser {
             }
         }
         */
-        println!("--------------- Dump of internal code ---------------");
         for i in 0..=self.internal_code.len() {
             for label in &label_map[i] {
                 println!("{}:", label.string);
@@ -664,6 +663,5 @@ impl Parser {
                 dump_operation(&self.internal_code[i])
             }
         }
-        println!("-----------------------------------------------------");
     }
 }
