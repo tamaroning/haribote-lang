@@ -16,19 +16,45 @@ use var_map::VariableMap;
 
 const VERSION_STR: &str = env!("CARGO_PKG_VERSION");
 
-pub fn run(s: String, var_map: &mut VariableMap) {
+#[derive(Debug)]
+pub struct Options {
+    emit_ir: bool,  /* whether a IR is printed or not */
+    exec: bool,     /* whether a program is executed or not */
+    optimize: bool, /* whether optimizer is enabled or not */
+}
+
+impl Options {
+    fn new() -> Self {
+        Options {
+            emit_ir: false,
+            exec: true,
+            optimize: true,
+        }
+    }
+}
+
+pub fn run(s: String, opts: &Options, var_map: &mut VariableMap) {
     let mut parser = Parser::new(s);
     if let Err(e) = parser.compile(var_map) {
         println!("{}", e);
         return;
     }
-    //parser.dump_internal_code(var_map);
-    println!("Optimizing...");
-    parser.optimize_constant_folding(var_map);
-    parser.optimize_peekhole(var_map);
-    parser.remove_unreachable_ops(var_map);
-    parser.dump_internal_code(var_map);
-    parser.exec(var_map);
+    if opts.emit_ir && opts.optimize {
+        println!("Optimizing...");
+    }
+    if opts.optimize {
+        parser.optimize_constant_folding(var_map);
+        parser.optimize_peekhole(var_map);
+        parser.remove_unreachable_ops(var_map);
+    }
+    if opts.emit_ir {
+        println!("--------------- Dump of internal code ---------------");
+        parser.dump_internal_code(var_map);
+        println!("-----------------------------------------------------");
+    }
+    if opts.exec {
+        parser.exec(var_map);
+    }
 }
 
 fn load_text(path: &str) -> String {
@@ -41,23 +67,51 @@ fn load_text(path: &str) -> String {
 
 fn main() {
     let args: Vec<String> = env::args().collect();
+    let mut options = Options::new();
+    let mut filepath = None;
 
-    if args.len() > 3 {
+    if args.len() > 1 && &args[1] == "help" {
         println!("haribote-lang version {}", VERSION_STR);
-        println!("Usage: haribote-lang <file path>");
-        std::process::exit(0);
+        println!("Usage:");
+        println!("    hrb [OPTIONS] FILEPATH    Run the program");
+        println!("    hrb [OPTIONS]             Run in interactive mode");
+        println!("Options:");
+        println!("    -emit-ir          Display the intermidiate representation");
+        println!("    -no-optimize      Doesn't optimize the program");
+        println!("    -no-exec          Doesn't execute the program");
+        return;
+    }
+
+    for arg in &args[1..] {
+        match arg.as_str() {
+            "-emit-ir" => {
+                options.emit_ir = true;
+            }
+            "-no-exec" => {
+                options.exec = false;
+            }
+            "-no-optimize" => {
+                options.optimize = false;
+            }
+            _ => {
+                if arg.starts_with("-") {
+                    println!("Invalid option: {}", arg);
+                    return;
+                }
+                filepath = Some(arg);
+            }
+        }
     }
 
     let mut var = VariableMap::new();
 
-    if args.len() == 2 {
-        let filepath = &args[1];
-        let src = load_text(filepath);
-        run(src, &mut var);
+    // run the file
+    if filepath != None {
+        let src = load_text(filepath.unwrap());
+        run(src, &options, &mut var);
     }
-
-    // REPL
-    if args.len() == 1 {
+    // run in interactive mode
+    else {
         println!("haribote-lang version {}", VERSION_STR);
         println!("Running in Interactive mode");
         println!("Type \"run <filepath>\" to load and run the file.");
@@ -75,9 +129,9 @@ fn main() {
             else if input.starts_with("run") {
                 let filepath = &input[4..];
                 let src = load_text(filepath);
-                run(src, &mut var);
+                run(src, &options, &mut var);
             } else {
-                run(input, &mut var);
+                run(input, &options, &mut var);
             }
         }
     }
@@ -95,7 +149,7 @@ mod test {
     fn test_add() {
         let src = String::from("result = 100 + 200 - 50;");
         let mut var = VariableMap::new();
-        run(src, &mut var);
+        run(src, &Options::new(), &mut var);
         let result = var.get(&Token::new(String::from("result"), lexer::TokenType::Ident));
         assert_eq!(result, 250);
     }
@@ -104,7 +158,7 @@ mod test {
     fn test_expr() {
         let src = String::from("a = 10 + 2 * 7 - 4;");
         let mut var = VariableMap::new();
-        run(src, &mut var);
+        run(src, &Options::new(), &mut var);
         let result = var.get(&Token::new(String::from("a"), lexer::TokenType::Ident));
         assert_eq!(result, 20);
     }
@@ -113,7 +167,7 @@ mod test {
     fn test_int_var() {
         let src = String::from("result = 1; result = result + result * 2; result = result + 4;");
         let mut var = VariableMap::new();
-        run(src, &mut var);
+        run(src, &Options::new(), &mut var);
         let result = var.get(&Token::new(String::from("result"), lexer::TokenType::Ident));
         assert_eq!(result, 7);
     }
@@ -122,7 +176,7 @@ mod test {
     fn test_goto() {
         let src = String::from("result = 1; goto A; B: result = result * 4; goto C; A: result = result + 2; goto B; C:");
         let mut var = VariableMap::new();
-        run(src, &mut var);
+        run(src, &Options::new(), &mut var);
         let result = var.get(&Token::new(String::from("result"), lexer::TokenType::Ident));
         assert_eq!(result, 12);
     }
@@ -133,7 +187,7 @@ mod test {
             "a = 2; if (a <= 2) { if (a == 1) {} else { result = 10; } } else { a = 0; }",
         );
         let mut var = VariableMap::new();
-        run(src, &mut var);
+        run(src, &Options::new(), &mut var);
         let result = var.get(&Token::new(String::from("result"), lexer::TokenType::Ident));
         assert_eq!(result, 10);
     }
@@ -142,7 +196,7 @@ mod test {
     fn test_for() {
         let src = String::from("sum = 0; i = 0; for (;i <= 10; i = i + 1) { sum = sum + i; }");
         let mut var = VariableMap::new();
-        run(src, &mut var);
+        run(src, &Options::new(), &mut var);
         let sum = var.get(&Token::new(String::from("sum"), lexer::TokenType::Ident));
         assert_eq!(sum, 55);
     }
@@ -151,7 +205,7 @@ mod test {
     fn test_array() {
         let src = String::from("let a[3]; a[1] = 1; a[2] = 2;");
         let mut var = VariableMap::new();
-        run(src, &mut var);
+        run(src, &Options::new(), &mut var);
         let a = [
             var.array_get(&Token::new("a".to_string(), lexer::TokenType::Ident), 0),
             var.array_get(&Token::new("a".to_string(), lexer::TokenType::Ident), 1),
