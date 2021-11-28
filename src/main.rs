@@ -75,6 +75,7 @@ fn main() {
         println!("Usage:");
         println!("    hrb [OPTIONS] FILEPATH    Run the program");
         println!("    hrb [OPTIONS]             Run in interactive mode");
+        println!("    hrb help                  Show the usage");
         println!("Options:");
         println!("    -emit-ir          Display the intermidiate representation");
         println!("    -no-optimize      Doesn't optimize the program");
