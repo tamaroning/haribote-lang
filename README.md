@@ -9,7 +9,7 @@ This repository is a remodelled implementation in Rust of the original version, 
 - This repository contains hrb, haribote-lang interpreter
 - hrb runs in two modes, normal mode and interactive mode (a.k.a. REPL)
 - Input source code is converted into internal code
-- and optimized it in several ways
+- and is optimized it in several ways
 
 For further information, See [Optimization Strategy](#Optimization-Strategy) or [My Blog(ja)](https://tamaron.hatenablog.com/entry/2021/11/20/165929).
 
