@@ -293,10 +293,72 @@ impl Parser {
     fn assign(&mut self) -> Result<Token, String> {
         let equality = self.equality()?;
         if self.lexer.tokens[self.expr_pos].matches("=") {
+            if equality.ty != TokenType::Ident {
+                return Err(format!(
+                    "rhs of '=' must be Ident, but found {}",
+                    equality.string
+                ));
+            }
             self.expr_pos += 1;
             let assign = self.assign()?;
             self.push_internal_code(Operation::Copy(equality, assign.clone()));
             return Ok(assign);
+        } else if self.lexer.tokens[self.expr_pos].matches("+=") {
+            if equality.ty != TokenType::Ident {
+                return Err(format!(
+                    "rhs of '+=' must be Ident, but found {}",
+                    equality.string
+                ));
+            }
+            self.expr_pos += 1;
+            let assign = self.assign()?;
+            self.push_internal_code(Operation::Add(
+                equality.clone(),
+                equality.clone(),
+                assign.clone(),
+            ))
+        } else if self.lexer.tokens[self.expr_pos].matches("-=") {
+            if equality.ty != TokenType::Ident {
+                return Err(format!(
+                    "rhs of '-=' must be Ident, but found {}",
+                    equality.string
+                ));
+            }
+            self.expr_pos += 1;
+            let assign = self.assign()?;
+            self.push_internal_code(Operation::Sub(
+                equality.clone(),
+                equality.clone(),
+                assign.clone(),
+            ))
+        } else if self.lexer.tokens[self.expr_pos].matches("*=") {
+            if equality.ty != TokenType::Ident {
+                return Err(format!(
+                    "rhs of '*=' must be Ident, but found {}",
+                    equality.string
+                ));
+            }
+            self.expr_pos += 1;
+            let assign = self.assign()?;
+            self.push_internal_code(Operation::Mul(
+                equality.clone(),
+                equality.clone(),
+                assign.clone(),
+            ))
+        } else if self.lexer.tokens[self.expr_pos].matches("/=") {
+            if equality.ty != TokenType::Ident {
+                return Err(format!(
+                    "rhs of '/=' must be Ident, but found {}",
+                    equality.string
+                ));
+            }
+            self.expr_pos += 1;
+            let assign = self.assign()?;
+            self.push_internal_code(Operation::Div(
+                equality.clone(),
+                equality.clone(),
+                assign.clone(),
+            ))
         }
         Ok(equality)
     }
@@ -372,10 +434,10 @@ impl Parser {
                 }
 
                 while start_pos < self.lexer.tokens.len() {
-                    if let "+" | "-" | "*" | "/" | "==" | "!=" | "<" | "<=" | "=" =
-                        self.lexer.tokens[start_pos].string.as_str()
+                    if let "+" | "-" | "*" | "/" | "==" | "!=" | "<" | "<=" | "=" | "+=" | "-="
+                    | "*=" | "/=" = self.lexer.tokens[start_pos].string.as_str()
                     {
-                        start_pos += 1;
+                        start_pos += 1; // eat 1 token
                         len += 1;
                         let rhs_len = self.expr_len(start_pos)?;
                         start_pos += rhs_len;
