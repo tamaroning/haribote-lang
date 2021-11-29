@@ -127,7 +127,7 @@ for         ::= "for" "(" expr? ";" expr? ";" expr? ")" "{" top* "}"
 goto-stmt   ::= "goto" <Ident> ";"
 
 expr        ::= assign
-assign      ::= equality ( "=" expr )?
+assign      ::= equality ( ("=" | "+=" | "-=" | "*=" | "/=") expr )?
 equality    ::= relational ( ( "==" | "!=" ) relational )*
 relational  ::= add        ( (  "<" | "<=" ) add        )*
 add         ::= mul        ( (  "+" | "-"  ) mul        )*
