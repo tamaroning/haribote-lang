@@ -1,0 +1,7 @@
+goto A;
+A:
+goto B;
+B:
+goto C;
+C:
+println "OK";
