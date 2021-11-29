@@ -1,15 +1,10 @@
-i = 4;
-if (i < 3) {
-    if (i == 1) {
-        println 1;
+a = 4;
+if (2 < a) {
+    if (4 < a) {
+        println "NO";
     } else {
-        println 2;
+        println "OK";
     }
 } else {
-    if (i < 4) {
-        println 3;
-        goto A;
-    }
-    println 4;
+    println "NO";
 }
-A:
