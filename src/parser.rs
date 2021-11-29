@@ -654,7 +654,9 @@ impl Parser {
             }
         }
         */
+
         for i in 0..=self.internal_code.len() {
+            //println!("line {}", i);
             for label in &label_map[i] {
                 println!("{}:", label.string);
             }

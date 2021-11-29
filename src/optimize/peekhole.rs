@@ -28,7 +28,7 @@ impl Parser {
         }
     }
 
-    fn optimize_jump_chain(&mut self, var_map: &mut VariableMap) {
+    pub fn optimize_jump_chain(&mut self, var_map: &mut VariableMap) {
         for i in 0..self.internal_code.len() {
             if let Operation::Goto(ref label) = self.internal_code[i] {
                 let final_dist = self.get_dist(var_map, label, label);
@@ -45,7 +45,17 @@ impl Parser {
         }
     }
 
-    pub fn optimize_peekhole(&mut self, var_map: &mut VariableMap) {
-        self.optimize_jump_chain(var_map);
+    // remove `goto A; A:`
+    pub fn remove_unnecessary_jump(&mut self, var_map: &mut VariableMap) {
+        for i in 0..self.internal_code.len() {
+            if let Operation::Goto(ref label) = self.internal_code[i] {
+                let line_dist = var_map.label_get(label);
+                //println!("L{} goto {}(L{})", i, label.string, line_dist);
+                if line_dist == (i + 1) as i32 {
+                    self.internal_code[i] = Operation::Nop;
+                }
+            }
+        }
+        self.remove_nop(var_map);
     }
 }

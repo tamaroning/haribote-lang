@@ -44,8 +44,9 @@ pub fn run(s: String, opts: &Options, var_map: &mut VariableMap) {
     }
     if opts.optimize {
         parser.optimize_constant_folding(var_map);
-        parser.optimize_peekhole(var_map);
+        parser.optimize_jump_chain(var_map);
         parser.remove_unreachable_ops(var_map);
+        parser.remove_unnecessary_jump(var_map);
     }
     if opts.emit_ir {
         println!("--------------- Dump of internal code ---------------");
@@ -221,7 +222,6 @@ mod test {
         let mut var_map = VariableMap::new();
         let mut parser = Parser::new(src);
         let _ = parser.compile(&mut var_map);
-        parser.dump_internal_code(&mut var_map);
         optimize::cfg::ic_to_cfg(&parser.internal_code, &mut var_map);
     }
 
