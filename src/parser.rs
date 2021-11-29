@@ -491,7 +491,7 @@ impl Parser {
         Ok(true)
     }
 
-    pub fn compile(&mut self, var: &mut VariableMap) -> Result<(), String> {
+    pub fn compile(&mut self, var: &mut VariableMap, is_interactive: bool) -> Result<(), String> {
         while self.pos < self.lexer.tokens.len() - 3 {
             // (simple) assignment
             if self.phrase_compare(["*t0", "=", "*t1", ";"])? {
@@ -681,6 +681,9 @@ impl Parser {
                         self.pos += 1;
                     }
                 }
+            } else if is_interactive && self.phrase_compare(["*e0"])? {
+                let expr0 = self.get_expr_param(0)?;
+                self.push_internal_code(Operation::Println(expr0));
             }
             // report syntax error
             else {

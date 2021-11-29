@@ -33,9 +33,9 @@ impl Options {
     }
 }
 
-pub fn run(s: String, opts: &Options, var_map: &mut VariableMap) {
+pub fn run(s: String, opts: &Options, var_map: &mut VariableMap, is_interactive: bool) {
     let mut parser = Parser::new(s);
-    if let Err(e) = parser.compile(var_map) {
+    if let Err(e) = parser.compile(var_map, is_interactive) {
         println!("{}", e);
         return;
     }
@@ -110,13 +110,13 @@ fn main() {
     // run the file
     if filepath != None {
         let src = load_text(filepath.unwrap());
-        run(src, &options, &mut var);
+        run(src, &options, &mut var, false);
     }
     // run in interactive mode
     else {
         println!("haribote-lang version {}", VERSION_STR);
         println!("Running in Interactive mode");
-        println!("Type \"run <filepath>\" to load and run the file.");
+        println!("Type \"run <filepath>\" to load and run the file, \"exit\" to exit");
         loop {
             let mut input = String::new();
             print!(">>> ");
@@ -131,9 +131,9 @@ fn main() {
             else if input.starts_with("run") {
                 let filepath = &input[4..];
                 let src = load_text(filepath);
-                run(src, &options, &mut var);
+                run(src, &options, &mut var, false);
             } else {
-                run(input, &options, &mut var);
+                run(input, &options, &mut var, true);
             }
         }
     }
@@ -151,7 +151,7 @@ mod test {
     fn test_add() {
         let src = String::from("result = 100 + 200 - 50;");
         let mut var = VariableMap::new();
-        run(src, &Options::new(), &mut var);
+        run(src, &Options::new(), &mut var, false);
         let result = var.get(&Token::new(String::from("result"), lexer::TokenType::Ident));
         assert_eq!(result, 250);
     }
@@ -160,7 +160,7 @@ mod test {
     fn test_expr() {
         let src = String::from("a = 10 + 2 * 7 - 4;");
         let mut var = VariableMap::new();
-        run(src, &Options::new(), &mut var);
+        run(src, &Options::new(), &mut var, false);
         let result = var.get(&Token::new(String::from("a"), lexer::TokenType::Ident));
         assert_eq!(result, 20);
     }
@@ -169,7 +169,7 @@ mod test {
     fn test_int_var() {
         let src = String::from("result = 1; result = result + result * 2; result = result + 4;");
         let mut var = VariableMap::new();
-        run(src, &Options::new(), &mut var);
+        run(src, &Options::new(), &mut var, false);
         let result = var.get(&Token::new(String::from("result"), lexer::TokenType::Ident));
         assert_eq!(result, 7);
     }
@@ -178,7 +178,7 @@ mod test {
     fn test_goto() {
         let src = String::from("result = 1; goto A; B: result = result * 4; goto C; A: result = result + 2; goto B; C:");
         let mut var = VariableMap::new();
-        run(src, &Options::new(), &mut var);
+        run(src, &Options::new(), &mut var, false);
         let result = var.get(&Token::new(String::from("result"), lexer::TokenType::Ident));
         assert_eq!(result, 12);
     }
@@ -189,7 +189,7 @@ mod test {
             "a = 2; if (a <= 2) { if (a == 1) {} else { result = 10; } } else { a = 0; }",
         );
         let mut var = VariableMap::new();
-        run(src, &Options::new(), &mut var);
+        run(src, &Options::new(), &mut var, false);
         let result = var.get(&Token::new(String::from("result"), lexer::TokenType::Ident));
         assert_eq!(result, 10);
     }
@@ -198,7 +198,7 @@ mod test {
     fn test_for() {
         let src = String::from("sum = 0; i = 0; for (;i <= 10; i = i + 1) { sum = sum + i; }");
         let mut var = VariableMap::new();
-        run(src, &Options::new(), &mut var);
+        run(src, &Options::new(), &mut var, false);
         let sum = var.get(&Token::new(String::from("sum"), lexer::TokenType::Ident));
         assert_eq!(sum, 55);
     }
@@ -207,7 +207,7 @@ mod test {
     fn test_array() {
         let src = String::from("let a[3]; a[1] = 1; a[2] = 2;");
         let mut var = VariableMap::new();
-        run(src, &Options::new(), &mut var);
+        run(src, &Options::new(), &mut var, false);
         let a = [
             var.array_get(&Token::new("a".to_string(), lexer::TokenType::Ident), 0),
             var.array_get(&Token::new("a".to_string(), lexer::TokenType::Ident), 1),
@@ -221,7 +221,7 @@ mod test {
         let src = String::from("a = 3; b = a; A: b = 100; goto A;");
         let mut var_map = VariableMap::new();
         let mut parser = Parser::new(src);
-        let _ = parser.compile(&mut var_map);
+        let _ = parser.compile(&mut var_map, false);
         optimize::cfg::ic_to_cfg(&parser.internal_code, &mut var_map);
     }
 
@@ -230,7 +230,7 @@ mod test {
         let src = String::from("a = 1; b = 2; c = 3; c = e;");
         let mut var_map = VariableMap::new();
         let mut parser = Parser::new(src);
-        let _ = parser.compile(&mut var_map);
+        let _ = parser.compile(&mut var_map, false);
         let cfg = optimize::cfg::ic_to_cfg(&parser.internal_code, &mut var_map);
         let const_maps = cfg.constant_propagation();
         let mut c = HashMap::new();
@@ -249,7 +249,7 @@ mod test {
         let src = String::from("i = 0; A: i = i + 1; goto A;");
         let mut var_map = VariableMap::new();
         let mut parser = Parser::new(src);
-        let _ = parser.compile(&mut var_map);
+        let _ = parser.compile(&mut var_map, false);
         let cfg = optimize::cfg::ic_to_cfg(&parser.internal_code, &mut var_map);
         let const_maps = cfg.constant_propagation();
         println!("{:?}", const_maps);

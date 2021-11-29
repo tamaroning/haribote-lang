@@ -183,9 +183,6 @@ impl Lexer {
             self.tokens
                 .push(Token::new_with_line_num(s, tok_ty, self.line));
         }
-        // In case the input lacks a semicolon at the end, push a semicolon
-        self.tokens
-            .push(Token::new(String::from(";"), TokenType::Simbol));
         self.tokens
             .push(Token::new(String::from(""), TokenType::Simbol));
         self.tokens
@@ -212,7 +209,7 @@ mod lexer_tests {
             tok_strs,
             vec![
                 "v200", "=", "200", ";", "if", "(", "v200", "/", "4", "==", "900", ")", "goto",
-                "end", ";", ";", "", "", ""
+                "end", ";", "", "", ""
             ]
         );
     }
