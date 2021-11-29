@@ -44,20 +44,22 @@ Run in an interactive mode:
 - `-no-exec`: Doesn't execute the program
 
 # Demo
+
+In interactive mode, you can type an expression to check the result
 ```
-?> ./hrb
+?> hrb
 haribote-lang version 1.1.1
 Running in Interactive mode
 Type "run <filepath>" to load and run the file.
->>> print "Hello World\n";  
+>>> print "Hello World\n";
 Hello World
->>> a = 15; b = 20;       
->>> c = a * b;  
->>> print "answer is "; println c;
-answer is 300
->>> exit;
+>>> a = 15; b = 20;
+>>> a * b
+300
+>>> exit
 ?>
 ```
+
 
 ```
 ?> hrb ./example/fibo.hrb`
@@ -77,7 +79,7 @@ Fibo_11 = 144
 ```
 
 ```
-?> ./hrb -emit-ir example/calc.hrb
+?> hrb -emit-ir example/calc.hrb
 Optimizing...
 --------------- Dump of internal code ---------------
         copy a, i32 1
